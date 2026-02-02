@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+tinydb
+bcrypt
+python-jose[cryptography]
+python-dotenv

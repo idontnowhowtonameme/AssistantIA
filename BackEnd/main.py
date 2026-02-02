@@ -1,92 +1,155 @@
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional  # Pour définir des paramètres optionnels
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Depends  # Depends sert à la sécurité plus tard
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from tinydb import TinyDB, Query
-from passlib.context import CryptContext  # Pour le hachage des mots de passe
-import jwt  # C'est PyJWT qui fournit cet import
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from tinydb import Query, TinyDB
 
-# --- CONFIGURATION ---
-SECRET_KEY = "TA_CLE_TRES_SECRETE_ICI"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Charge BackEnd/.env (IMPORTANT: avant d'utiliser os.getenv dans security.py)
+load_dotenv()
 
-app = FastAPI()
+from security import create_access_token, get_user_id_from_token, hash_password, verify_password
 
+
+
+
+app = FastAPI(title="AssistantIA API")
+
+# CORS (React)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",  # CRA
+        "http://localhost:5173",  # Vite
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# --- BDD (TinyDB) ---
+BASE_DIR = Path(__file__).resolve().parent  # dossier BackEnd
+BDD_DIR = BASE_DIR / "BDD"
+BDD_DIR.mkdir(exist_ok=True)
 
-# Utilise un nom de dossier cohérent (tout en minuscules c'est mieux)
-FOLDER_NAME = 'BDD'
-if not os.path.exists(FOLDER_NAME):
-    os.makedirs(FOLDER_NAME)
+# ⬇️ FICHIERS BDD (NOUVEAUX NOMS)
+db_users = TinyDB(BDD_DIR / "users.json")
+db_history = TinyDB(BDD_DIR / "historique.json")
 
-db_users = TinyDB(f'{FOLDER_NAME}/users.json')
-db_history = TinyDB(f'{FOLDER_NAME}/historique.json') # Changé ici
+# ⬇️ TABLES (noms logiques inchangés)
+dbuser = db_users.table("dbuser")
+dbhistorique = db_history.table("dbhistorique")
 
-# --- FONCTIONS UTILES ---
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    # Correction pour Python 3.12+
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+UserQ = Query()
+HistQ = Query()
 
-# --- ROUTES ---
+# --- Auth (JWT Bearer) ---
+bearer = HTTPBearer(auto_error=True)
+
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
+    token = creds.credentials
+    try:
+        user_id = get_user_id_from_token(token)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user = dbuser.get(UserQ.id == user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
 
 @app.get("/")
 def health_check():
-    return {"status": "online", "folder": FOLDER_NAME}
+    return {"status": "online"}
 
-@app.post("/register")
-def register(username: str, password: str, email: str):
-    User = Query()
-    if db_users.search(User.username == username):
-        raise HTTPException(status_code=400, detail="Cet utilisateur existe déjà")
-    
-    hashed_password = pwd_context.hash(password)
-    new_user = {
-        "username": username,
-        "email": email,
-        "password_hash": hashed_password,
-        "role": "user",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    db_users.insert(new_user)
-    return {"message": "Utilisateur créé avec succès !"}
 
-@app.post("/login")
-def login(username: str, password: str):
-    User = Query()
-    user = db_users.get(User.username == username)
-    
-    if not user or not pwd_context.verify(password, user['password_hash']):
-        raise HTTPException(status_code=401, detail="Identifiants incorrects")
-    
-    access_token = create_access_token(data={"sub": user['username'], "role": user['role']})
-    
-    return {
-        "access_token": access_token, 
-        "token_type": "bearer",
-        "username": user['username']
-    }
+# ---------- AUTH ----------
+@app.post("/auth/register", status_code=201)
+def register(email: str, password: str):
+    email_norm = email.strip().lower()
 
-@app.post("/save-history")
-def save_history(user_id: str, user_message: str, llm_response: str):
-    # Route avec tes noms de champs complets
-    db_history.insert({
-        "id_user": user_id,
+    if dbuser.get(UserQ.email == email_norm):
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    user_id = f"usr_{uuid.uuid4().hex}"
+    user_doc = {
+        "id": user_id,
+        "email": email_norm,
+        "password_hash": hash_password(password),
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "user_message": user_message,
-        "llm_response": llm_response
+    }
+    dbuser.insert(user_doc)
+    return {"id": user_id, "email": email_norm, "created_at": user_doc["created_at"]}
+
+
+@app.post("/auth/login")
+def login(email: str, password: str):
+    email_norm = email.strip().lower()
+    user = dbuser.get(UserQ.email == email_norm)
+
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token(user_id=user["id"])
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/auth/me")
+def me(user=Depends(get_current_user)):
+    return {"id": user["id"], "email": user["email"], "created_at": user["created_at"]}
+
+
+# ---------- HISTORY ----------
+@app.get("/history")
+def history(limit: int = 50, offset: int = 0, user=Depends(get_current_user)):
+    # garde-fous simples
+    if limit < 1:
+        limit = 1
+    if limit > 200:
+        limit = 200
+    if offset < 0:
+        offset = 0
+
+    user_id = user["id"]
+    all_items = dbhistorique.search(HistQ.user_id == user_id)
+
+    # Tri par date (ISO) -> tri lexical OK
+    all_items.sort(key=lambda x: x.get("created_at", ""))
+
+    items = all_items[offset: offset + limit]
+    return {"items": items, "limit": limit, "offset": offset}
+
+# ---------- AI CHAT ----------
+@app.post("/ai/chat")
+def ai_chat(message: str, user=Depends(get_current_user)):
+    user_id = user["id"]
+    now = datetime.now(timezone.utc).isoformat()
+
+    # 1) Sauvegarde message user
+    dbhistorique.insert({
+        "id": f"msg_{uuid.uuid4().hex}",
+        "user_id": user_id,
+        "role": "user",
+        "content": message,
+        "created_at": now,
     })
-    return {"status": "success"}
+
+    # 2) Réponse mock (pour valider le flux)
+    answer = f"(mock) Tu as dit : {message}"
+
+    # 3) Sauvegarde réponse assistant
+    dbhistorique.insert({
+        "id": f"msg_{uuid.uuid4().hex}",
+        "user_id": user_id,
+        "role": "assistant",
+        "content": answer,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+    # 4) Retour API
+    return {"answer": answer}
