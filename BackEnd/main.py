@@ -1,21 +1,20 @@
 import os
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional  # Pour définir des paramètres optionnels
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends  # Depends sert à la sécurité plus tard
 from fastapi.middleware.cors import CORSMiddleware
 from tinydb import TinyDB, Query
-from passlib.context import CryptContext
-import jwt
+from passlib.context import CryptContext  # Pour le hachage des mots de passe
+import jwt  # C'est PyJWT qui fournit cet import
 
 # --- CONFIGURATION ---
-SECRET_KEY = "TA_CLE_TRES_SECRETE_ICI" # À mettre dans un .env plus tard
+SECRET_KEY = "TA_CLE_TRES_SECRETE_ICI"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
-# Configuration CORS pour Vike/React (port 3000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -24,20 +23,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Sécurité : Hachage des mots de passe
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Initialisation des bases de données dans le dossier /bdd
-if not os.path.exists('bdd'):
-    os.makedirs('bdd')
+# Utilise un nom de dossier cohérent (tout en minuscules c'est mieux)
+FOLDER_NAME = 'BDD'
+if not os.path.exists(FOLDER_NAME):
+    os.makedirs(FOLDER_NAME)
 
-db_users = TinyDB('bdd/users.json')
-db_content = TinyDB('bdd/content.json')
+db_users = TinyDB(f'{FOLDER_NAME}/users.json')
+db_history = TinyDB(f'{FOLDER_NAME}/historique.json') # Changé ici
 
 # --- FONCTIONS UTILES ---
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Correction pour Python 3.12+
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -45,7 +45,7 @@ def create_access_token(data: dict):
 
 @app.get("/")
 def health_check():
-    return {"status": "online", "database": "bdd/ folder ready"}
+    return {"status": "online", "folder": FOLDER_NAME}
 
 @app.post("/register")
 def register(username: str, password: str, email: str):
@@ -59,7 +59,7 @@ def register(username: str, password: str, email: str):
         "email": email,
         "password_hash": hashed_password,
         "role": "user",
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     db_users.insert(new_user)
     return {"message": "Utilisateur créé avec succès !"}
@@ -72,7 +72,6 @@ def login(username: str, password: str):
     if not user or not pwd_context.verify(password, user['password_hash']):
         raise HTTPException(status_code=401, detail="Identifiants incorrects")
     
-    # Création du Token
     access_token = create_access_token(data={"sub": user['username'], "role": user['role']})
     
     return {
@@ -81,8 +80,13 @@ def login(username: str, password: str):
         "username": user['username']
     }
 
-@app.post("/add-content")
-def add_content(text: str, token: str):
-    # Ici, on ajoutera plus tard une vérification de token
-    db_content.insert({"text": text, "date": datetime.utcnow().isoformat()})
-    return {"status": "Contenu ajouté"}
+@app.post("/save-history")
+def save_history(user_id: str, user_message: str, llm_response: str):
+    # Route avec tes noms de champs complets
+    db_history.insert({
+        "id_user": user_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "user_message": user_message,
+        "llm_response": llm_response
+    })
+    return {"status": "success"}
