@@ -1,0 +1,261 @@
+/* --- Variables spécifiques à l'historique --- */
+:root {
+  --history-bg: rgba(255, 255, 255, 0.95);
+  --history-border: #e5e7eb;
+  --history-user-bg: #e0e7ff;
+  --history-user-text: #3730a3;
+  --history-assistant-bg: #f3f4f6;
+  --history-assistant-text: #1f2937;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+}
+
+/* --- Container principal avec historique --- */
+.chat-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+  position: relative;
+}
+
+/* --- Boutons d'en-tête --- */
+.chat-header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.history-btn {
+  background: #f3f4f6;
+  color: var(--text-main);
+  border: 1px solid #d1d5db;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-btn:hover {
+  background: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.logout-btn {
+  background: var(--danger);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: var(--danger-hover);
+}
+
+/* --- History Panel --- */
+.history-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 380px;
+  height: 85vh;
+  background: var(--history-bg);
+  border-left: 1px solid var(--history-border);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+  border-radius: 0 24px 24px 0;
+}
+
+.history-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--history-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-header h3 {
+  color: var(--text-main);
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.refresh-history-btn,
+.clear-history-btn,
+.close-history-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: none;
+  transition: all 0.2s;
+}
+
+.refresh-history-btn {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: var(--text-main);
+}
+
+.refresh-history-btn:hover {
+  background: #f3f4f6;
+}
+
+.clear-history-btn {
+  background: var(--danger);
+  color: white;
+}
+
+.clear-history-btn:hover {
+  background: var(--danger-hover);
+}
+
+.close-history-btn {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  color: var(--text-main);
+}
+
+.close-history-btn:hover {
+  background: #f3f4f6;
+}
+
+/* --- History Messages --- */
+.history-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-loading {
+  text-align: center;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f4f6;
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.history-empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 20px;
+}
+
+.history-bubble {
+  max-width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  word-break: break-word;
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
+}
+
+.history-bubble:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.history-bubble.user {
+  background: var(--history-user-bg);
+  color: var(--history-user-text);
+  border-left-color: var(--primary);
+}
+
+.history-bubble.assistant {
+  background: var(--history-assistant-bg);
+  color: var(--history-assistant-text);
+  border-left-color: #9ca3af;
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.history-role {
+  font-weight: 600;
+}
+
+.history-content {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.history-footer {
+  padding: 15px;
+  border-top: 1px solid var(--history-border);
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* --- Animations spécifiques --- */
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* --- Scrollbars pour l'historique --- */
+.history-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.history-messages::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+/* --- Responsive pour l'historique --- */
+@media (max-width: 768px) {
+  .chat-container {
+    flex-direction: column;
+  }
+  
+  .history-panel {
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+    top: 0;
+    right: 0;
+    border-radius: 0;
+  }
+  
+  .history-header {
+    padding: 15px;
+  }
+}

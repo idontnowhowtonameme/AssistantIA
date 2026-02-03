@@ -8,21 +8,27 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    try {
-      const response = await fetch('http://127.0.0.1:8000/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // FastAPI attend des query params par défaut, mais ici on force l'envoi en query string
-        // ou on adapte le fetch selon la définition exacte de votre main.py
-        // Pour être sûr avec votre main.py actuel :
-      });
-      
-      // Note: Votre main.py actuel attend des query params pour /register
-      // URL: /auth/register?email=...&password=...
-      const url = new URL('http://127.0.0.1:8000/auth/register');
-      url.searchParams.append('email', email);
-      url.searchParams.append('password', password);
+    
+    // --- AJOUT : Vérification de l'email ---
+    // Cette regex impose : texte + @ + texte + . + extension (2 lettres min)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+    if (!emailRegex.test(email)) {
+      alert("Format d'email invalide. Exemple attendu : nom@domaine.com");
+      return; // On stoppe l'exécution ici
+    }
+
+    if (password.length < 6) {
+      alert("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+    // --------------------------------------
+
+    const url = new URL('http://127.0.0.1:8000/auth/register');
+    url.searchParams.append('email', email);
+    url.searchParams.append('password', password);
+
+    try {
       const res = await fetch(url, { method: 'POST' });
       
       if (res.ok) {
@@ -34,30 +40,37 @@ export default function Register() {
       }
     } catch (error) {
       console.error(error);
+      alert("Erreur serveur");
     }
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
+    <div className="glass-card auth-card">
       <h2>Créer un compte</h2>
-      <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={e => setEmail(e.target.value)} 
-          required 
-        />
-        <input 
-          type="password" 
-          placeholder="Mot de passe" 
-          value={password} 
-          onChange={e => setPassword(e.target.value)} 
-          required 
-        />
-        <button type="submit">S'inscrire</button>
+      <form onSubmit={handleRegister}>
+        <div className="form-group">
+          <input 
+            type="email" 
+            placeholder="Email" 
+            value={email} 
+            onChange={e => setEmail(e.target.value)} 
+            required 
+          />
+        </div>
+        <div className="form-group">
+          <input 
+            type="password" 
+            placeholder="Mot de passe" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            required 
+          />
+        </div>
+        <button type="submit" className="btn-primary">S'inscrire</button>
       </form>
-      <p>Déjà un compte ? <Link to="/login">Se connecter</Link></p>
+      <p style={{marginTop: '20px', textAlign: 'center', color: '#1f2937'}}>
+        Déjà un compte ? <Link to="/login" style={{color: '#6366f1', fontWeight: 'bold'}}>Se connecter</Link>
+      </p>
     </div>
   );
 }

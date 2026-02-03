@@ -3,10 +3,10 @@
   --primary: #6366f1;
   --primary-hover: #4f46e5;
   --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --glass: rgba(255, 255, 255, 0.95); /* Légèrement plus opaque pour la lisibilité */
+  --glass: rgba(255, 255, 255, 0.95);
   --user-bubble: #6366f1;
   --ai-bubble: #f3f4f6;
-  --text-main: #1f2937; /* Gris très foncé, presque noir */
+  --text-main: #1f2937;
   --text-muted: #4b5563;
 }
 
@@ -63,20 +63,21 @@ body {
   margin-bottom: 20px;
 }
 
-/* --- Inputs (Forçage texte noir) --- */
-input {
+/* --- Inputs généraux --- */
+input, textarea {
   width: 100%;
   padding: 14px 16px;
   border-radius: 12px;
   border: 2px solid #e5e7eb;
   outline: none;
   font-size: 1rem;
+  font-family: inherit;
   background-color: #ffffff;
-  color: #000000 !important; /* Force le texte saisi en noir */
+  color: #000000 !important;
   transition: all 0.2s ease;
 }
 
-input:focus {
+input:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
@@ -100,7 +101,7 @@ input:focus {
 
 /* --- Chat Card --- */
 .chat-card {
-  max-width: 1000px;
+  max-width: 100%;
   height: 85vh;
   display: flex;
   flex-direction: column;
@@ -118,8 +119,11 @@ input:focus {
 
 .chat-header h2 {
   color: var(--text-main);
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
+/* --- Messages Area --- */
 .messages-area {
   flex: 1;
   overflow-y: auto;
@@ -143,7 +147,7 @@ input:focus {
 .bubble.user {
   align-self: flex-end;
   background: var(--user-bubble);
-  color: #ffffff; /* Texte blanc pour le fond bleu */
+  color: #ffffff;
   border-bottom-right-radius: 4px;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
@@ -151,26 +155,79 @@ input:focus {
 .bubble.assistant {
   align-self: flex-start;
   background: var(--ai-bubble);
-  color: #1f2937 !important; /* Texte gris très foncé obligatoire */
+  color: var(--text-main) !important;
   border-bottom-left-radius: 4px;
   border: 1px solid rgba(0,0,0,0.05);
 }
 
-/* --- Zone de saisie du chat --- */
+/* --- Zone de saisie du chat CORRIGÉE --- */
 .chat-input-wrapper {
-  padding: 20px 30px;
+  padding: 10px 20px 15px 20px;
   background: #ffffff;
   display: flex;
-  gap: 12px;
+  gap: 8px;
   border-top: 1px solid rgba(0,0,0,0.08);
+  align-items: center;
+  width: 100%;
 }
 
-.chat-input-wrapper input {
+.chat-input-wrapper textarea {
+  flex: 1;
+  min-height: 30px;
+  max-height: 100px;
   background: #f3f4f6;
   border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  line-height: 1.4;
+  overflow-y: auto;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  resize: none; /* Désactive le redimensionnement manuel */
+  color: #000;
+  width: 75%;
+  
+  /* Masquer la scrollbar mais garder le défilement */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
-/* --- Animations --- */
+/* Masquer la scrollbar pour Chrome, Safari et Opera */
+.chat-input-wrapper textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-input-wrapper button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 38px;
+  font-size: 0.9rem;
+  min-width: 80px;
+  max-width: 100px;
+  width: 25%;
+  white-space: nowrap;
+}
+
+.chat-input-wrapper button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.chat-input-wrapper button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.7;
+}
+
+/* --- Animations générales --- */
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
@@ -181,11 +238,49 @@ input:focus {
   to { opacity: 1; }
 }
 
-/* Scrollbar fine */
+/* --- Scrollbar fine pour messages --- */
 .messages-area::-webkit-scrollbar {
   width: 6px;
 }
+
 .messages-area::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.1);
   border-radius: 10px;
+}
+
+/* --- Responsive général --- */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 10px;
+  }
+  
+  .messages-area {
+    padding: 20px;
+  }
+  
+  .bubble {
+    max-width: 85%;
+  }
+  
+  .chat-input-wrapper {
+    padding: 8px 15px 12px 15px;
+    gap: 6px;
+  }
+  
+  .chat-input-wrapper textarea {
+    min-height: 28px;
+    max-height: 80px;
+    width: 70%;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+  
+  .chat-input-wrapper button {
+    width: 30%;
+    min-width: 70px;
+    max-width: 90px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    height: 36px;
+  }
 }

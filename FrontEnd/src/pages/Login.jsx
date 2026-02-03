@@ -8,6 +8,14 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    // --- AJOUT : Vérification rapide avant fetch ---
+    if (!email.includes('@') || !email.includes('.')) {
+      alert("Veuillez entrer un email valide.");
+      return;
+    }
+    // -----------------------------------------------
+
     const url = new URL('http://127.0.0.1:8000/auth/login');
     url.searchParams.append('email', email);
     url.searchParams.append('password', password);

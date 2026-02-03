@@ -4,20 +4,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './pages/Chat';
 import './App.css';
+import './pages/HistoryPanel.css';
 
-/**
- * Composant de protection des routes.
- * Il vérifie la présence du token dans le localStorage.
- */
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   
-  // Si le token n'existe pas, on redirige vers la page de login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // Sinon, on affiche le composant demandé (le Chat)
   return children;
 };
 
@@ -26,11 +21,8 @@ function App() {
     <Router>
       <div className="app-container">
         <Routes>
-          {/* --- Routes Publiques --- */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-
-          {/* --- Route Privée (Chat) --- */}
           <Route 
             path="/" 
             element={
@@ -39,9 +31,6 @@ function App() {
               </PrivateRoute>
             } 
           />
-
-          {/* --- Redirection de secours --- */}
-          {/* Si l'utilisateur tape une URL inconnue, on le renvoie à l'accueil */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -49,4 +38,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;o

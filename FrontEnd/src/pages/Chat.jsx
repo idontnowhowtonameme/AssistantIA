@@ -1,19 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
+import HistoryPanel from './HistoryPanel';
+import './HistoryPanel.css';
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Scroll automatique vers le bas
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
+  // Ajuster la hauteur du textarea automatiquement
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 100)}px`;
+    }
+  }, [input]);
+
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = "/login";
+  };
+
+  // Fonction pour basculer l'affichage de l'historique
+  const toggleHistory = () => {
+    setShowHistory(!showHistory);
+  };
+
+  // Fonction pour charger un message depuis l'historique
+  const loadMessageFromHistory = (content, role) => {
+    setMessages(prev => [...prev, { role, content }]);
+    setShowHistory(false);
+  };
+
+  // Gérer la touche Entrée (Shift+Entrée pour nouvelle ligne)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(e);
+    }
   };
 
   const sendMessage = async (e) => {
@@ -26,9 +57,12 @@ export default function Chat() {
     setInput('');
     setLoading(true);
 
+    // Réinitialiser la hauteur du textarea
+    if (inputRef.current) {
+      inputRef.current.style.height = '30px';
+    }
+
     try {
-      // --- CETTE PARTIE EST LA CLÉ ---
-      // Ton backend attend : POST /ai/chat?message=...
       const url = new URL('http://127.0.0.1:8000/ai/chat');
       url.searchParams.append('message', textToSend);
 
@@ -37,7 +71,6 @@ export default function Chat() {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         }
-        // On n'envoie PAS de body ici car tout est dans l'URL
       });
 
       const data = await res.json();
@@ -45,7 +78,6 @@ export default function Chat() {
       if (res.ok) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
       } else {
-        // Si le serveur répond 502, on affiche le détail pour comprendre
         setMessages(prev => [...prev, { role: 'assistant', content: `Erreur ${res.status}: ${data.detail || "Problème de communication"}` }]);
       }
     } catch (err) {
@@ -56,39 +88,54 @@ export default function Chat() {
   };
 
   return (
-    <div className="glass-card chat-card">
-      <div className="chat-header">
-        <h2 style={{ color: '#1f2937', fontSize: '1.2rem', fontWeight: 700 }}>🤖 Assistant IA</h2>
-        <button onClick={handleLogout} className="logout-btn">
-          Déconnexion
-        </button>
-      </div>
-
-      <div className="messages-area" ref={scrollRef}>
-        {messages.map((m, i) => (
-          <div 
-            key={i} 
-            className={`bubble ${m.role}`} 
-            style={{ color: m.role === 'assistant' ? '#1f2937' : '#ffffff' }}
-          >
-            {m.content}
+    <div className="chat-container">
+      <div className="glass-card chat-card">
+        <div className="chat-header">
+          <h2>Assistant IA</h2>
+          <div className="chat-header-buttons">
+            <button onClick={toggleHistory} className="history-btn">
+              Historique
+            </button>
+            <button onClick={handleLogout} className="logout-btn">
+              Déconnexion
+            </button>
           </div>
-        ))}
-        {loading && <div className="bubble assistant" style={{color: '#1f2937'}}>Réflexion...</div>}
+        </div>
+
+        <div className="messages-area" ref={scrollRef}>
+          {messages.map((m, i) => (
+            <div 
+              key={i} 
+              className={`bubble ${m.role}`}
+            >
+              {m.content}
+            </div>
+          ))}
+          {loading && <div className="bubble assistant">Réflexion...</div>}
+        </div>
+
+        <form className="chat-input-wrapper" onSubmit={sendMessage}>
+          <textarea 
+            ref={inputRef}
+            placeholder="Écrivez votre message... (Shift+Entrée pour nouvelle ligne)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            rows="1"
+          />
+          <button type="submit" disabled={loading}>
+            Envoyer
+          </button>
+        </form>
       </div>
 
-      <form className="chat-input-wrapper" onSubmit={sendMessage}>
-        <input 
-          type="text" 
-          placeholder="Écrivez votre message..." 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          style={{ color: '#000', backgroundColor: '#fff' }} // Force texte noir
-        />
-        <button type="submit" className="btn-primary" disabled={loading}>
-          Envoyer
-        </button>
-      </form>
+      {/* Panneau d'historique */}
+      <HistoryPanel 
+        isOpen={showHistory}
+        onClose={toggleHistory}
+        onLoadMessage={loadMessageFromHistory}
+        token={localStorage.getItem('token')}
+      />
     </div>
   );
 }
