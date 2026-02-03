@@ -1,3 +1,4 @@
+```text
 AssistantIA – Backend API
 
 Backend de l’application AssistantIA, une API REST sécurisée permettant :
@@ -30,20 +31,20 @@ httpx (requêtes HTTP async)
 BackEnd/
 ├── app/
 │   ├── main.py              # Point d’entrée FastAPI (factory)
-│   ├── config.py            # Chargement et accès aux variables d’environnement
+│   ├── config.py            # Variables d’environnement
 │   ├── database.py          # Initialisation TinyDB
-│   ├── security.py          # Hash mot de passe + JWT
-│   ├── dependencies.py      # Dépendances FastAPI (auth JWT)
-│   ├── schemas.py           # Schémas Pydantic (request / response)
-│   ├── llm.py               # Appel au LLM via OpenRouter
+│   ├── security.py          # Hash + JWT
+│   ├── dependencies.py      # Dépendances FastAPI
+│   ├── schemas.py           # Schémas Pydantic
+│   ├── llm.py               # Appel LLM via OpenRouter
 │   └── routers/
-│       ├── auth.py          # Authentification (register / login / me)
-│       ├── history.py       # Historique utilisateur
-│       └── ai.py            # Endpoint IA
+│       ├── auth.py
+│       ├── history.py
+│       └── ai.py
 ├── BDD/
-│   ├── users.json           # Base utilisateurs (TinyDB)
-│   └── historique.json      # Historique des conversations
-├── .env                     # Variables d’environnement (non versionné)
+│   ├── users.json
+│   └── historique.json
+├── .env
 ├── .gitignore
 ├── requirements.txt
 └── README.md
