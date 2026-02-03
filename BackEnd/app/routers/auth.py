@@ -7,6 +7,7 @@ from app.database import dbuser, UserQ
 from app.security import hash_password, verify_password, create_access_token
 from app.dependencies import get_current_user
 from app.schemas import RegisterIn, LoginIn, TokenOut, MeOut
+from app.validators import domain_has_mx
 
 
 router = APIRouter()
@@ -20,6 +21,10 @@ def register(payload: RegisterIn):
     - plus propre que des query params pour email/password
     """
     email_norm = payload.email.strip().lower()
+
+    domain = email_norm.split("@")[-1]
+    if not domain_has_mx(domain):
+        raise HTTPException(status_code=400, detail="Email domain is not valid (no MX record)")
 
     if dbuser.get(UserQ.email == email_norm):
         raise HTTPException(status_code=409, detail="Email already registered")
