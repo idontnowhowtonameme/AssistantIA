@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from tinydb import Query, TinyDB
+from llm import call_openrouter
 
 # Charge BackEnd/.env (IMPORTANT: avant d'utiliser os.getenv dans security.py)
 load_dotenv()
@@ -126,23 +127,36 @@ def history(limit: int = 50, offset: int = 0, user=Depends(get_current_user)):
 
 # ---------- AI CHAT ----------
 @app.post("/ai/chat")
-def ai_chat(message: str, user=Depends(get_current_user)):
+async def ai_chat(message: str, user=Depends(get_current_user)):
+    """
+    Endpoint protégé :
+    - nécessite un JWT valide (via get_current_user)
+    - prend un message utilisateur
+    - appelle OpenRouter
+    - stocke question + réponse dans l'historique
+    """
     user_id = user["id"]
-    now = datetime.now(timezone.utc).isoformat()
 
-    # 1) Sauvegarde message user
+    # 1) Sauvegarder le message utilisateur dans l'historique
     dbhistorique.insert({
         "id": f"msg_{uuid.uuid4().hex}",
         "user_id": user_id,
         "role": "user",
         "content": message,
-        "created_at": now,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    # 2) Réponse mock (pour valider le flux)
-    answer = f"(mock) Tu as dit : {message}"
+    # 2) Appeler l'IA (OpenRouter)
+    try:
+        answer = await call_openrouter([
+            {"role": "system", "content": "Tu es un assistant utile et concis."},
+            {"role": "user", "content": message},
+        ])
+    except RuntimeError as e:
+        # En cas d'erreur fournisseur, on renvoie une erreur propre côté API
+        raise HTTPException(status_code=502, detail=str(e))
 
-    # 3) Sauvegarde réponse assistant
+    # 3) Sauvegarder la réponse de l'assistant
     dbhistorique.insert({
         "id": f"msg_{uuid.uuid4().hex}",
         "user_id": user_id,
@@ -151,5 +165,12 @@ def ai_chat(message: str, user=Depends(get_current_user)):
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
 
-    # 4) Retour API
+    # 4) Retourner la réponse au client (frontend)
     return {"answer": answer}
+
+# ---------- delete ----------
+@app.delete("/history")
+def clear_history(user=Depends(get_current_user)):
+    user_id = user["id"]
+    removed = dbhistorique.remove(HistQ.user_id == user_id)
+    return {"deleted": len(removed)}
