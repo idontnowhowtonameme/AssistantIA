@@ -72,6 +72,7 @@ export default function Chat() {
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         }
       });
+      
 
       const data = await res.json();
 

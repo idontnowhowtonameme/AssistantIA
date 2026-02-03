@@ -4,15 +4,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './pages/Chat';
 import './App.css';
-import './pages/HistoryPanel.css';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  
-  if (!token) {
+  // Vérifie si le token existe vraiment
+  if (!token || token === "null" || token === "undefined") {
     return <Navigate to="/login" replace />;
   }
-
   return children;
 };
 
@@ -31,6 +29,7 @@ function App() {
               </PrivateRoute>
             } 
           />
+          {/* Redirige toutes les autres URL vers la racine */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -38,4 +37,4 @@ function App() {
   );
 }
 
-export default App;o
+export default App;
