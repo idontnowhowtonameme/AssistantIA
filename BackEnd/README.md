@@ -1,73 +1,75 @@
+# AssistantIA – Backend API
+
+Backend de l’application **AssistantIA**, une API REST sécurisée permettant :
+
+- l’authentification utilisateur (JWT)
+- l’accès à une IA via un service LLM externe (OpenRouter)
+- la gestion de l’historique des conversations par utilisateur
+
+---
+
+## 🧱 Stack technique
+
+- Python 3.11
+- FastAPI
+- Uvicorn
+- JWT (python-jose)
+- bcrypt (hash des mots de passe)
+- TinyDB (stockage JSON)
+- OpenRouter (LLM externe)
+- httpx (requêtes HTTP async)
+
+---
+
+## 📁 Architecture du projet
+
 ```text
-AssistantIA – Backend API
-
-Backend de l’application AssistantIA, une API REST sécurisée permettant :
-
-l’authentification utilisateur (JWT),
-
-l’accès à une IA via un service LLM externe (OpenRouter),
-
-la gestion de l’historique des conversations par utilisateur.
-
-🧱 Stack technique
-
-Python 3.11
-
-FastAPI
-
-Uvicorn
-
-JWT (python-jose)
-
-bcrypt (hash des mots de passe)
-
-TinyDB (stockage JSON)
-
-OpenRouter (LLM externe)
-
-httpx (requêtes HTTP async)
-
-📁 Architecture du projet
 BackEnd/
 ├── app/
 │   ├── main.py              # Point d’entrée FastAPI (factory)
 │   ├── config.py            # Variables d’environnement
 │   ├── database.py          # Initialisation TinyDB
 │   ├── security.py          # Hash + JWT
-│   ├── dependencies.py      # Dépendances FastAPI
+│   ├── dependencies.py      # Dépendances FastAPI (auth JWT)
 │   ├── schemas.py           # Schémas Pydantic
 │   ├── llm.py               # Appel LLM via OpenRouter
 │   └── routers/
-│       ├── auth.py
-│       ├── history.py
-│       └── ai.py
+│       ├── auth.py          # Authentification
+│       ├── history.py       # Historique utilisateur
+│       └── ai.py            # Endpoint IA
 ├── BDD/
-│   ├── users.json
-│   └── historique.json
-├── .env
+│   ├── users.json           # Base utilisateurs
+│   └── historique.json      # Historique des conversations
+├── .env                     # Variables d’environnement (non versionné)
 ├── .gitignore
 ├── requirements.txt
 └── README.md
+```
 
-⚙️ Installation
-1️⃣ Cloner le projet
+---
+
+## ⚙️ Installation
+
+### 1️⃣ Cloner le projet
+
+```bash
 git clone https://github.com/idontnowhowtonameme/AssistantIA
 cd AssistantIA/BackEnd
 
 2️⃣ Créer et activer un environnement virtuel
-python -m venv .venv
 
+python -m venv .venv
 
 Windows
 
 .\.venv\Scripts\Activate.ps1
-
 
 Linux / macOS
 
 source .venv/bin/activate
 
 3️⃣ Installer les dépendances
+
 pip install -r requirements.txt
 
 🔐 Configuration (.env)
@@ -85,19 +87,16 @@ OPENROUTER_MODEL=openrouter/auto
 OPENROUTER_SITE_URL=http://localhost:3000
 OPENROUTER_APP_NAME=AssistantIA
 
-
 ⚠️ Le fichier .env ne doit jamais être versionné.
-
 ▶️ Lancer le serveur
 
 Depuis le dossier BackEnd :
 
 uvicorn app.main:app --reload
 
+    API : http://127.0.0.1:8000
 
-API : http://127.0.0.1:8000
-
-Documentation Swagger : http://127.0.0.1:8000/docs
+    Swagger : http://127.0.0.1:8000/docs
 
 🔑 Authentification (JWT)
 POST /auth/register
@@ -118,7 +117,6 @@ Connexion utilisateur.
   "password": "Password123!"
 }
 
-
 Réponse :
 
 {
@@ -130,7 +128,6 @@ GET /auth/me
 
 Retourne les informations de l’utilisateur connecté.
 🔒 Route protégée (JWT requis).
-
 🤖 IA (LLM)
 POST /ai/chat
 
@@ -142,123 +139,110 @@ Envoie un message à l’IA et enregistre la conversation.
   "message": "Bonjour, peux-tu te présenter ?"
 }
 
-
 Réponse :
 
 {
   "answer": "..."
 }
 
-
 ⚠️ L’appel au LLM est effectué uniquement côté backend.
 La clé API n’est jamais exposée au frontend.
-
 🗂️ Historique
 GET /history
 
 Récupère l’historique des messages de l’utilisateur connecté.
-
 DELETE /history
 
 Supprime l’historique de l’utilisateur connecté.
-
 🔐 Sécurité
+Mots de passe
 
-Mots de passe :
+    jamais stockés en clair
 
-jamais stockés en clair
+    hashés avec bcrypt
 
-hashés avec bcrypt
+Authentification
 
-Authentification :
+    JWT avec expiration
 
-JWT avec expiration
+    routes sensibles protégées via dépendances FastAPI
 
-routes sensibles protégées via dépendances FastAPI
+Clé IA
 
-Clé IA :
+    stockée uniquement côté serveur
 
-stockée uniquement côté serveur
-
-jamais exposée au client
+    jamais exposée au client
 
 🚪 Déconnexion (Logout)
 Pourquoi il n’y a pas de /logout côté backend ?
 
-Dans cette architecture, la déconnexion n’est pas gérée par une route backend, et c’est un choix volontaire et standard dans les systèmes basés sur JWT (JSON Web Token).
+La déconnexion n’est pas gérée par une route backend, ce qui est un choix volontaire et standard avec les JWT.
+Fonctionnement
 
-Fonctionnement du JWT
+    le backend génère un token JWT à la connexion
 
-Lors de la connexion (/auth/login), le backend :
+    le token est stateless
 
-vérifie les identifiants
-
-génère un token JWT signé
-
-renvoie ce token au frontend
-
-Le backend ne stocke pas les tokens :
-
-il se contente de les vérifier à chaque requête protégée
-
-Un token JWT est :
-
-stateless
-
-valide jusqu’à son expiration (exp)
+    le backend ne stocke pas les sessions
 
 Déconnexion côté frontend
 
 La déconnexion consiste simplement à :
 
-supprimer le token JWT côté client (ex. :
+    supprimer le token JWT côté client
+    (ex. localStorage.removeItem("token"))
 
-localStorage.removeItem("token")
-
-ou suppression en mémoire)
-
-ne plus envoyer l’en-tête :
+    ne plus envoyer l’en-tête :
 
 Authorization: Bearer <token>
 
+Toute tentative d’accès à une route protégée retournera 401 Unauthorized.
+Cas hors périmètre
 
-Une fois le token supprimé :
+Un /logout backend serait utile uniquement pour :
 
-l’utilisateur est considéré comme déconnecté
+    blacklist de tokens
 
-toute tentative d’accès à une route protégée retournera 401 Unauthorized
+    refresh tokens
 
-Sécurité et expiration
+    révocation forcée (admin)
 
-Les tokens ont une durée de vie limitée (JWT_EXPIRES_MINUTES)
+👉 Ces mécanismes sont volontairement hors périmètre du backend de ce projet.
+🔄 Fonctionnement global de l’API
 
-Même si un token est compromis :
+    FastAPI (main.py)
 
-il devient inutilisable après expiration
+        initialise l’application
 
-Cette approche évite :
+        charge la configuration
 
-le stockage serveur des sessions
+        monte les routers (/auth, /ai, /history)
 
-les problèmes de synchronisation
+    Routers (routers/*.py)
 
-la complexité d’un blacklistage de tokens
+        reçoivent les requêtes HTTP
 
-Cas où un logout backend serait nécessaire
+        valident les données via schemas.py
 
-Un endpoint /logout serait utile uniquement si :
+        appliquent les dépendances (JWT)
 
-on stockait les tokens côté serveur
+    Sécurité
 
-ou si on implémentait :
+        vérification JWT
 
-une blacklist de tokens
+        identification de l’utilisateur courant
 
-des refresh tokens
+    Données
 
-une révocation forcée (admin)
+        persistance via TinyDB
 
-👉 Ces mécanismes sont volontairement hors périmètre du BACKEND de ce projet.
+        isolation de la logique de stockage
+
+    IA
+
+        appel OpenRouter via llm.py
+
+        clé API strictement côté serveur
 
 📌 Notes
 
