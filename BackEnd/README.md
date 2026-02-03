@@ -181,6 +181,84 @@ stockée uniquement côté serveur
 
 jamais exposée au client
 
+🚪 Déconnexion (Logout)
+Pourquoi il n’y a pas de /logout côté backend ?
+
+Dans cette architecture, la déconnexion n’est pas gérée par une route backend, et c’est un choix volontaire et standard dans les systèmes basés sur JWT (JSON Web Token).
+
+Fonctionnement du JWT
+
+Lors de la connexion (/auth/login), le backend :
+
+vérifie les identifiants
+
+génère un token JWT signé
+
+renvoie ce token au frontend
+
+Le backend ne stocke pas les tokens :
+
+il se contente de les vérifier à chaque requête protégée
+
+Un token JWT est :
+
+stateless
+
+valide jusqu’à son expiration (exp)
+
+Déconnexion côté frontend
+
+La déconnexion consiste simplement à :
+
+supprimer le token JWT côté client (ex. :
+
+localStorage.removeItem("token")
+
+ou suppression en mémoire)
+
+ne plus envoyer l’en-tête :
+
+Authorization: Bearer <token>
+
+
+Une fois le token supprimé :
+
+l’utilisateur est considéré comme déconnecté
+
+toute tentative d’accès à une route protégée retournera 401 Unauthorized
+
+Sécurité et expiration
+
+Les tokens ont une durée de vie limitée (JWT_EXPIRES_MINUTES)
+
+Même si un token est compromis :
+
+il devient inutilisable après expiration
+
+Cette approche évite :
+
+le stockage serveur des sessions
+
+les problèmes de synchronisation
+
+la complexité d’un blacklistage de tokens
+
+Cas où un logout backend serait nécessaire
+
+Un endpoint /logout serait utile uniquement si :
+
+on stockait les tokens côté serveur
+
+ou si on implémentait :
+
+une blacklist de tokens
+
+des refresh tokens
+
+une révocation forcée (admin)
+
+👉 Ces mécanismes sont volontairement hors périmètre du BACKEND de ce projet.
+
 📌 Notes
 
 Ce backend est conçu pour être consommé par un frontend React (SPA) utilisant un token JWT stocké côté client et transmis via l’en-tête :
