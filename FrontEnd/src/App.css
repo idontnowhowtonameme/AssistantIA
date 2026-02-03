@@ -1,42 +1,191 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+/* --- Variables de couleurs --- */
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --glass: rgba(255, 255, 255, 0.95); /* Légèrement plus opaque pour la lisibilité */
+  --user-bubble: #6366f1;
+  --ai-bubble: #f3f4f6;
+  --text-main: #1f2937; /* Gris très foncé, presque noir */
+  --text-muted: #4b5563;
+}
+
+/* --- Reset --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  height: 100vh;
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  padding: 20px;
+}
+
+/* --- Carte Glassmorphism --- */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+}
+
+/* --- Auth (Login/Register) --- */
+.auth-card {
+  max-width: 420px;
+  padding: 40px;
+  animation: slideUp 0.5s ease-out;
+}
+
+.auth-card h2 {
+  color: var(--text-main);
   text-align: center;
+  margin-bottom: 25px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.form-group {
+  margin-bottom: 20px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* --- Inputs (Forçage texte noir) --- */
+input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  outline: none;
+  font-size: 1rem;
+  background-color: #ffffff;
+  color: #000000 !important; /* Force le texte saisi en noir */
+  transition: all 0.2s ease;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
-.card {
-  padding: 2em;
+.btn-primary {
+  width: 100%;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.read-the-docs {
-  color: #888;
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* --- Chat Card --- */
+.chat-card {
+  max-width: 1000px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.4s ease-in;
+}
+
+.chat-header {
+  padding: 20px 30px;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.chat-header h2 {
+  color: var(--text-main);
+}
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Bulles de message --- */
+.bubble {
+  max-width: 75%;
+  padding: 12px 18px;
+  border-radius: 20px;
+  font-size: 1rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  color: #ffffff; /* Texte blanc pour le fond bleu */
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: var(--ai-bubble);
+  color: #1f2937 !important; /* Texte gris très foncé obligatoire */
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* --- Zone de saisie du chat --- */
+.chat-input-wrapper {
+  padding: 20px 30px;
+  background: #ffffff;
+  display: flex;
+  gap: 12px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+
+.chat-input-wrapper input {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+/* --- Animations --- */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Scrollbar fine */
+.messages-area::-webkit-scrollbar {
+  width: 6px;
+}
+.messages-area::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
 }

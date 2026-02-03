@@ -1,50 +1,62 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
+
 import bcrypt
 from jose import JWTError, jwt
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# CONFIGURATION
-JWT_SECRET = os.getenv("JWT_SECRET", "secret_par_defaut_si_env_manque")
+# ==========
+# CONFIG
+# ==========
+JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRES_MINUTES = int(os.getenv("JWT_EXPIRES_MINUTES", "15"))
 
-# --- MOTS DE PASSE (BCRYPT) ---
+# ==========
+# PASSWORDS (bcrypt)
+# ==========
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
     hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
     return hashed.decode("utf-8")
 
+
 def verify_password(password: str, password_hash: str) -> bool:
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        return bcrypt.checkpw(
+            password.encode("utf-8"),
+            password_hash.encode("utf-8"),
+        )
     except Exception:
         return False
 
-# --- TOKENS (JWT) ---
+
+# ==========
+# JWT
+# ==========
 def create_access_token(user_id: str) -> str:
     now = datetime.now(timezone.utc)
     exp = now + timedelta(minutes=JWT_EXPIRES_MINUTES)
-    
+
     payload = {
         "sub": user_id,
         "iat": int(now.timestamp()),
-        "exp": int(exp.timestamp())
+        "exp": int(exp.timestamp()),
     }
+
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
 
 def decode_access_token(token: str) -> Dict[str, Any]:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except JWTError as e:
-        raise ValueError("Token invalide") from e
+        raise ValueError("invalid_token") from e
+
 
 def get_user_id_from_token(token: str) -> str:
     payload = decode_access_token(token)
     user_id = payload.get("sub")
     if not user_id:
-        raise ValueError("Payload invalide")
+        raise ValueError("invalid_token_payload")
     return user_id

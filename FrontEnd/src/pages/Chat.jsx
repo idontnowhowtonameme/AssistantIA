@@ -22,22 +22,34 @@ export default function Chat() {
 
     const userMsg = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
+    const textToSend = input;
     setInput('');
     setLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/ai/chat', {
+      // --- CETTE PARTIE EST LA CLÉ ---
+      // Ton backend attend : POST /ai/chat?message=...
+      const url = new URL('http://127.0.0.1:8000/ai/chat');
+      url.searchParams.append('message', textToSend);
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({ message: input })
+        }
+        // On n'envoie PAS de body ici car tout est dans l'URL
       });
+
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+
+      if (res.ok) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+      } else {
+        // Si le serveur répond 502, on affiche le détail pour comprendre
+        setMessages(prev => [...prev, { role: 'assistant', content: `Erreur ${res.status}: ${data.detail || "Problème de communication"}` }]);
+      }
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Erreur de connexion." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "Impossible de contacter le serveur." }]);
     } finally {
       setLoading(false);
     }
@@ -46,24 +58,23 @@ export default function Chat() {
   return (
     <div className="glass-card chat-card">
       <div className="chat-header">
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Assistant IA</h2>
-        <button onClick={handleLogout} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600 }}>
+        <h2 style={{ color: '#1f2937', fontSize: '1.2rem', fontWeight: 700 }}>🤖 Assistant IA</h2>
+        <button onClick={handleLogout} className="logout-btn">
           Déconnexion
         </button>
       </div>
 
       <div className="messages-area" ref={scrollRef}>
-        {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#9ca3af', marginTop: '20%' }}>
-            Posez-moi n'importe quelle question !
-          </div>
-        )}
         {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.role}`}>
+          <div 
+            key={i} 
+            className={`bubble ${m.role}`} 
+            style={{ color: m.role === 'assistant' ? '#1f2937' : '#ffffff' }}
+          >
             {m.content}
           </div>
         ))}
-        {loading && <div className="bubble assistant">En train de réfléchir...</div>}
+        {loading && <div className="bubble assistant" style={{color: '#1f2937'}}>Réflexion...</div>}
       </div>
 
       <form className="chat-input-wrapper" onSubmit={sendMessage}>
@@ -72,8 +83,9 @@ export default function Chat() {
           placeholder="Écrivez votre message..." 
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          style={{ color: '#000', backgroundColor: '#fff' }} // Force texte noir
         />
-        <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '0 25px' }}>
+        <button type="submit" className="btn-primary" disabled={loading}>
           Envoyer
         </button>
       </form>
