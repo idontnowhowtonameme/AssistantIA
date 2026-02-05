@@ -46,9 +46,5 @@ def create_app() -> FastAPI:
 
 
 # Uvicorn cherche un objet `app`
-<<<<<<< HEAD
-# Commande: uvicorn app.main:app --reload
-=======
 # Commande: uvicorn main:app --reload
->>>>>>> b6532ed56bd33968f9ac0937f5c2f794c77e4a28
 app = create_app()
