@@ -365,6 +365,15 @@ suppression atomique : utilisateur + historique
 
 toutes les routes sensibles sont protégées par JWT
 
+### 🧠 Contexte conversationnel (IA)
+
+L’IA dispose d’un contexte de conversation basé sur l’historique utilisateur.
+
+À chaque requête :
+- les derniers messages de l’utilisateur sont récupérés depuis l’historique
+- seuls les N derniers échanges sont transmis au LLM
+- cela permet de conserver une continuité de dialogue tout en maîtrisant la taille du prompt
+
 📌 Notes
 
 Ce backend est conçu pour être consommé par un frontend React (SPA) utilisant un token JWT stocké côté client et transmis via l’en-tête :
