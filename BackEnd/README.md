@@ -244,6 +244,136 @@ Un /logout backend serait utile uniquement pour :
 
         clé API strictement côté serveur
 
+👥 Gestion des comptes utilisateurs
+
+Le backend implémente une gestion des comptes basée sur des rôles (user / admin) et des règles de sécurité strictes.
+
+🔑 Rôles utilisateur
+
+Chaque utilisateur possède un champ role stocké en base (TinyDB) :
+
+{
+  "id": "usr_xxxxx",
+  "email": "user@example.com",
+  "password_hash": "...",
+  "role": "user",
+  "created_at": "..."
+}
+
+
+user : rôle par défaut à l’inscription
+
+admin : rôle avec privilèges étendus
+
+👉 Le rôle n’est jamais fourni par le client :
+il est défini côté backend pour éviter toute élévation de privilèges.
+
+🧑‍💻 Attribution du rôle admin
+
+Par conception, ce projet ne prévoit pas d’endpoint public pour devenir admin.
+
+Un utilisateur peut être promu admin :
+
+manuellement (édition de users.json en environnement local)
+
+ou via un script / seed interne (hors périmètre du projet)
+
+Ce choix garantit :
+
+un contrôle total côté serveur
+
+l’absence de failles liées à l’auto-attribution de privilèges
+
+🗑️ Suppression de comptes utilisateurs
+
+Le backend permet deux types de suppression de comptes :
+
+1️⃣ Suppression de son propre compte (self-delete)
+
+Un utilisateur authentifié (admin ou non) peut supprimer son propre compte uniquement.
+
+Caractéristiques :
+
+l’identification se fait via le JWT
+
+aucun identifiant utilisateur n’est fourni par le client
+
+l’utilisateur ne peut supprimer que son compte
+
+🔒 Route protégée par JWT
+
+2️⃣ Suppression d’un compte par un administrateur
+
+Un utilisateur ayant le rôle admin peut supprimer n’importe quel compte utilisateur.
+
+Caractéristiques :
+
+la route est protégée par une dépendance require_admin
+
+l’identification du compte se fait via le user_id
+
+le backend vérifie systématiquement les droits
+
+🧹 Nettoyage automatique de l’historique
+
+Lorsqu’un compte utilisateur est supprimé (par lui-même ou par un admin) :
+
+✅ toutes les conversations associées à cet utilisateur sont supprimées automatiquement
+
+Cela garantit :
+
+la cohérence des données
+
+le respect de la confidentialité
+
+l’absence de données orphelines
+
+L’association est basée sur le champ :
+
+"user_id": "usr_xxxxx"
+
+
+présent dans chaque message de l’historique.
+
+🆔 Pourquoi utiliser un user_id plutôt que l’email ?
+
+Le backend repose sur un identifiant interne unique (user_id) plutôt que sur l’email.
+
+Avantages :
+
+l’email peut changer
+
+le user_id est immuable
+
+les relations (historique, permissions) restent cohérentes
+
+meilleure séparation entre données métier et données utilisateur
+
+L’email reste :
+
+un identifiant fonctionnel (login)
+
+mais jamais une clé primaire
+
+🔐 Sécurité et garanties
+
+impossible pour un utilisateur de supprimer un autre compte
+
+impossible de devenir admin via l’API
+
+suppression atomique : utilisateur + historique
+
+toutes les routes sensibles sont protégées par JWT
+
+### 🧠 Contexte conversationnel (IA)
+
+L’IA dispose d’un contexte de conversation basé sur l’historique utilisateur.
+
+À chaque requête :
+- les derniers messages de l’utilisateur sont récupérés depuis l’historique
+- seuls les N derniers échanges sont transmis au LLM
+- cela permet de conserver une continuité de dialogue tout en maîtrisant la taille du prompt
+
 📌 Notes
 
 Ce backend est conçu pour être consommé par un frontend React (SPA) utilisant un token JWT stocké côté client et transmis via l’en-tête :

@@ -32,7 +32,6 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
 
       if (res.ok) {
         const data = await res.json();
-        // Note: le backend renvoie maintenant {items: [...]}
         setHistoryMessages(data.items || []);
       } else {
         console.error('Erreur lors du chargement de l\'historique');

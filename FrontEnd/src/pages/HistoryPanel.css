@@ -8,6 +8,12 @@
   --history-assistant-text: #1f2937;
   --danger: #ef4444;
   --danger-hover: #dc2626;
+  --warning: #f59e0b;
+  --warning-hover: #d97706;
+  --info: #06b6d4;
+  --info-hover: #0891b2;
+  --success: #10b981;
+  --success-hover: #059669;
 }
 
 /* --- Container principal avec historique --- */
@@ -17,43 +23,6 @@
   height: 100%;
   gap: 0;
   position: relative;
-}
-
-/* --- Boutons d'en-tête --- */
-.chat-header-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.history-btn {
-  background: #f3f4f6;
-  color: var(--text-main);
-  border: 1px solid #d1d5db;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.history-btn:hover {
-  background: #e5e7eb;
-  transform: translateY(-1px);
-}
-
-.logout-btn {
-  background: var(--danger);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background: var(--danger-hover);
 }
 
 /* --- History Panel --- */
@@ -92,8 +61,41 @@
   gap: 8px;
 }
 
-.refresh-history-btn,
-.clear-history-btn,
+/* Bouton Rafraîchir - Bleu */
+.refresh-history-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: none;
+  transition: all 0.2s;
+  background: #6366f1;
+  color: white;
+}
+
+.refresh-history-btn:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+/* Bouton Effacer l'historique - Orange (Warning) */
+.clear-history-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: none;
+  transition: all 0.2s;
+  background: var(--warning);
+  color: white;
+}
+
+.clear-history-btn:hover {
+  background: var(--warning-hover);
+  transform: translateY(-1px);
+}
+
+/* Bouton Fermer - Gris */
 .close-history-btn {
   padding: 6px 12px;
   border-radius: 6px;
@@ -101,35 +103,13 @@
   font-size: 0.9rem;
   border: none;
   transition: all 0.2s;
-}
-
-.refresh-history-btn {
-  background: transparent;
-  border: 1px solid #d1d5db;
-  color: var(--text-main);
-}
-
-.refresh-history-btn:hover {
-  background: #f3f4f6;
-}
-
-.clear-history-btn {
-  background: var(--danger);
+  background: #6b7280;
   color: white;
 }
 
-.clear-history-btn:hover {
-  background: var(--danger-hover);
-}
-
-.close-history-btn {
-  background: transparent;
-  border: 1px solid #d1d5db;
-  color: var(--text-main);
-}
-
 .close-history-btn:hover {
-  background: #f3f4f6;
+  background: #4b5563;
+  transform: translateY(-1px);
 }
 
 /* --- History Messages --- */
@@ -156,7 +136,7 @@
   width: 30px;
   height: 30px;
   border: 3px solid #f3f4f6;
-  border-top: 3px solid var(--primary);
+  border-top: 3px solid #6366f1;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -185,7 +165,7 @@
 .history-bubble.user {
   background: var(--history-user-bg);
   color: var(--history-user-text);
-  border-left-color: var(--primary);
+  border-left-color: #6366f1;
 }
 
 .history-bubble.assistant {
@@ -257,5 +237,16 @@
   
   .history-header {
     padding: 15px;
+  }
+  
+  .history-actions {
+    flex-direction: column;
+  }
+  
+  .refresh-history-btn,
+  .clear-history-btn,
+  .close-history-btn {
+    padding: 8px;
+    font-size: 0.8rem;
   }
 }

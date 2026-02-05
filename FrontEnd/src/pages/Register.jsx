@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import '../App.css'; // Remonte d'un dossier pour trouver le CSS
 
 export default function Register() {
   const [email, setEmail] = useState('');

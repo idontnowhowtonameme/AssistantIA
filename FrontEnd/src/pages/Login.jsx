@@ -29,7 +29,7 @@ export default function Login() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
-        navigate('/'); // Redirige vers le chat
+        navigate('/');
       } else {
         const errorData = await res.json();
         alert(errorData.detail || "Identifiants incorrects");
