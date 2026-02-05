@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.auth import router as auth_router
 from app.routers.history import router as history_router
 from app.routers.ai import router as ai_router
+from app.routers.users import router as users_router
 
 
 def create_app() -> FastAPI:
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(history_router, prefix="/history", tags=["history"])
     app.include_router(ai_router, prefix="/ai", tags=["ai"])
+    app.include_router(users_router, prefix="/users", tags=["users"])
 
     # Route simple de santé (utile pour vérifier que l'API répond)
     @app.get("/")
