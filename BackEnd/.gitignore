@@ -2,6 +2,7 @@
 .venv/
 BackEnd/.venv/
 .env
+BackEnd/BDD/
 
 # Python cache
 __pycache__/
