@@ -54,7 +54,7 @@ export default function Chat() {
       } else {
         const error = await res.json();
         console.error("Erreur API:", error);
-        setMessages(prev => [...prev, { role: 'assistant', content: "Erreur de communication avec l'IA." }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: "Votre session a expiré veuillez vous reconnecter." }]);
       }
     } catch (err) {
       console.error("Erreur réseau:", err);

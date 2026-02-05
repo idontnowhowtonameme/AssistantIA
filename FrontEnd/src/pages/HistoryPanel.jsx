@@ -128,7 +128,7 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
             >
               <div className="history-meta">
                 <span className="history-role">
-                  {msg.role === 'user' ? '👤 Vous' : '🤖 Assistant'}
+                  {msg.role === 'user' ? 'Vous' : 'Assistant'}
                 </span>
                 <span className="history-time">
                   {formatDate(msg.created_at)}
