@@ -9,27 +9,33 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    // --- AJOUT : Vérification rapide avant fetch ---
     if (!email.includes('@') || !email.includes('.')) {
       alert("Veuillez entrer un email valide.");
       return;
     }
-    // -----------------------------------------------
-
-    const url = new URL('http://127.0.0.1:8000/auth/login');
-    url.searchParams.append('email', email);
-    url.searchParams.append('password', password);
 
     try {
-      const res = await fetch(url, { method: 'POST' });
+      const res = await fetch('http://127.0.0.1:8000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      });
+      
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
         navigate('/'); // Redirige vers le chat
       } else {
-        alert("Identifiants incorrects");
+        const errorData = await res.json();
+        alert(errorData.detail || "Identifiants incorrects");
       }
     } catch (err) {
+      console.error("Erreur de connexion:", err);
       alert("Erreur serveur");
     }
   };
@@ -39,10 +45,22 @@ export default function Login() {
       <h2>Connexion</h2>
       <form onSubmit={handleLogin}>
         <div className="form-group">
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input 
+            type="email" 
+            placeholder="Email" 
+            value={email} 
+            onChange={e => setEmail(e.target.value)} 
+            required 
+          />
         </div>
         <div className="form-group">
-          <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required />
+          <input 
+            type="password" 
+            placeholder="Mot de passe" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            required 
+          />
         </div>
         <button type="submit" className="btn-primary">Se connecter</button>
       </form>
