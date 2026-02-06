@@ -173,6 +173,29 @@ export default function Chat() {
               </button>
             </div>
 
+            {me && (
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  color: "#4b5563",
+                  marginRight: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  lineHeight: 1.2,
+                }}
+              >
+                <span>
+                  👤 <strong>{me.email}</strong>
+                </span>
+                {me.role === "admin" && (
+                  <span style={{ fontSize: "0.75rem", color: "#6366f1" }}>
+                    administrateur
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="chat-header-buttons">
               <button onClick={() => setShowHistory(!showHistory)} className="history-btn">
                 Historique
