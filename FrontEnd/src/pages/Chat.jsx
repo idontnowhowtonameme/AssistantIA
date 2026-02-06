@@ -22,21 +22,6 @@ export default function Chat() {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    const loadMe = async () => {
-      try {
-        const data = await apiFetch("/auth/me");
-        setMe(data);
-      } catch (e) {
-        if (e.status === 401) {
-          clearToken();
-          window.location.href = "/login";
-        }
-      }
-    };
-    loadMe();
-  }, []);
-
-  useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
@@ -90,6 +75,56 @@ export default function Chat() {
     }
   };
 
+  // ✅ NOUVEAU : au démarrage, charger la dernière conversation (si elle existe)
+  const loadLastConversationOnStartup = async () => {
+    try {
+      const data = await apiFetch("/conversations");
+      const items = data?.items || [];
+
+      if (items.length === 0) {
+        // Aucune conversation => on reste en mode "Nouvelle conversation"
+        setActiveConversationId(null);
+        setConversationTitle("Nouvelle conversation");
+        setMessages([]);
+        return;
+      }
+
+      const last = items[0]; // backend trié par updated_at desc
+      if (!last?.id) return;
+
+      setActiveConversationId(last.id);
+      setConversationTitle(last.title || "Conversation");
+      await loadConversationMessages(last.id);
+    } catch (e) {
+      console.error("Impossible de charger la dernière conversation:", e);
+      // On laisse "Nouvelle conversation"
+    }
+  };
+
+  // ✅ CORRIGÉ : init complet au chargement (me + last conversation)
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const data = await apiFetch("/auth/me");
+        setMe(data);
+
+        // Si une conv n'est pas déjà sélectionnée (ex: via navigation),
+        // on charge la dernière conversation pour afficher le bon titre.
+        if (!activeConversationId) {
+          await loadLastConversationOnStartup();
+        }
+      } catch (e) {
+        if (e.status === 401) {
+          clearToken();
+          window.location.href = "/login";
+        }
+      }
+    };
+
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const sendMessage = async (e) => {
     e.preventDefault();
     const text = input.trim();
@@ -107,8 +142,10 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
 
+      // Si une nouvelle conversation est créée côté backend
       if (!activeConversationId && data.conversation_id) {
         setActiveConversationId(data.conversation_id);
+        // le titre sera renommable; à défaut on reste sur le titre par défaut
         setConversationTitle("Nouvelle conversation");
       }
     } catch (err) {
@@ -224,7 +261,9 @@ export default function Chat() {
                   Je suis votre assistant IA. Posez-moi n'importe quelle question pour démarrer une conversation.
                 </div>
                 {!activeConversationId && (
-                  <div className="welcome-tip">Votre première question créera automatiquement une nouvelle conversation.</div>
+                  <div className="welcome-tip">
+                    Votre première question créera automatiquement une nouvelle conversation.
+                  </div>
                 )}
               </div>
             )}
