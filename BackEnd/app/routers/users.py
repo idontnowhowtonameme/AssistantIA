@@ -10,21 +10,21 @@ router = APIRouter()
 @router.get("", response_model=UserListOut)
 def admin_list_users(admin=Depends(require_admin)):
     """
-    Liste les utilisateurs (ADMIN uniquement).
-    - JWT requis
-    - role=admin requis
+    Liste tous les utilisateurs (ADMIN uniquement).
+    Important : on renvoie une vue "safe" (pas de password_hash).
     """
     users = dbuser.all()
-    # On renvoie une vue "safe" (sans password_hash)
+
     items = [
         {
             "id": u["id"],
             "email": u["email"],
-            "created_at": u["created_at"],
+            "created_at": u.get("created_at", ""),
             "role": u.get("role"),
         }
         for u in users
     ]
+
     return {"items": items}
 
 
@@ -37,10 +37,14 @@ def delete_my_account(user=Depends(get_current_user)):
     """
     user_id = user["id"]
 
+    # 1) Supprimer l'historique
     removed_hist = dbhistorique.remove(HistQ.user_id == user_id)
+
+    # 2) Supprimer l'utilisateur
     removed_user = dbuser.remove(UserQ.id == user_id)
 
     if not removed_user:
+        # Cas rare : token OK mais user absent => incohérence
         raise HTTPException(status_code=404, detail="User not found")
 
     return {

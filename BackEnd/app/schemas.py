@@ -25,6 +25,8 @@ class MeOut(BaseModel):
     created_at: str
     role: Optional[str] = None
 
+
+# ---------- USERS (ADMIN) ----------
 class UserOut(BaseModel):
     id: str
     email: EmailStr
@@ -35,14 +37,17 @@ class UserOut(BaseModel):
 class UserListOut(BaseModel):
     items: List[UserOut]
 
+
 # ---------- CONVERSATIONS ----------
 class ConversationCreateIn(BaseModel):
     # Titre optionnel (sinon on peut en générer un côté backend)
     title: Optional[str] = Field(default=None, max_length=80)
 
+
 class ConversationUpdateIn(BaseModel):
-    # Renommage (obligatoire, mais on garde la validation côté route)
+    # Renommer une conversation
     title: str = Field(min_length=1, max_length=80)
+
 
 class ConversationOut(BaseModel):
     id: str
@@ -58,9 +63,8 @@ class ConversationListOut(BaseModel):
 # ---------- CHAT ----------
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=5000)
-
     # Le frontend enverra l'id de conversation sélectionnée.
-    # Si None : on peut créer une nouvelle conversation automatiquement.
+    # Si None : le backend peut créer une conversation automatiquement.
     conversation_id: Optional[str] = None
 
 

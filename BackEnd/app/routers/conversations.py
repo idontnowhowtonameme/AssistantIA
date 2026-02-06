@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import dbconversations, dbhistorique, ConvQ, HistQ
 from app.dependencies import get_current_user
-from app.schemas import ConversationCreateIn, ConversationUpdateIn, ConversationOut, ConversationListOut
+from app.schemas import (
+    ConversationCreateIn,
+    ConversationUpdateIn,
+    ConversationOut,
+    ConversationListOut,
+)
 
 router = APIRouter()
 
@@ -47,7 +52,7 @@ def list_conversations(user=Depends(get_current_user)):
 @router.patch("/{conversation_id}", response_model=ConversationOut)
 def rename_conversation(conversation_id: str, payload: ConversationUpdateIn, user=Depends(get_current_user)):
     """
-    Renomme une conversation (si elle appartient à l'utilisateur).
+    Renomme une conversation (uniquement si elle appartient à l'utilisateur).
     """
     conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
     if not conv:
@@ -80,7 +85,9 @@ def delete_conversation(conversation_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # 1) supprimer les messages liés
-    removed_msgs = dbhistorique.remove((HistQ.user_id == user["id"]) & (HistQ.conversation_id == conversation_id))
+    removed_msgs = dbhistorique.remove(
+        (HistQ.user_id == user["id"]) & (HistQ.conversation_id == conversation_id)
+    )
 
     # 2) supprimer la conversation
     dbconversations.remove((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
