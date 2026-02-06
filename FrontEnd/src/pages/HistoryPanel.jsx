@@ -1,117 +1,144 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import './HistoryPanel.css';
 
 export default function HistoryPanel({ 
   isOpen, 
   onClose, 
-  conversations, 
-  loading,
   onSelectConversation,
-  onCreateConversation,
   activeConversationId,
-  onRefresh,
   token
 }) {
-  const [showDeleteConvModal, setShowDeleteConvModal] = useState(false);
-  const [convToDelete, setConvToDelete] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const historyScrollRef = useRef(null);
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Charger les conversations quand le panneau s'ouvre
   useEffect(() => {
-    if (historyScrollRef.current && isOpen) {
-      historyScrollRef.current.scrollTop = historyScrollRef.current.scrollHeight;
+    if (isOpen) {
+      loadConversations();
     }
-  }, [messages, isOpen]);
+  }, [isOpen]);
 
-  const loadConversationMessages = async (conversationId) => {
-    if (!conversationId) return;
+  const loadConversations = async () => {
+    setLoading(true);
+    setError(null);
     
-    setLoadingMessages(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/history/${conversationId}?limit=10&offset=0`, {
+      console.log('Chargement des conversations...');
+      // CHANGÉ: Utilisation de /conversations au lieu de /history/conversations
+      const res = await fetch('http://127.0.0.1:8000/conversations', {
         method: 'GET',
         headers: { 
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      console.log('Réponse status:', res.status);
+      
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.items || []);
+        console.log('Données reçues:', data);
+        setConversations(data.items || []);
       } else {
-        console.error('Erreur lors du chargement des messages');
-        setMessages([]);
+        const errorData = await res.json().catch(() => ({ detail: 'Erreur inconnue' }));
+        console.error('Erreur API:', errorData);
+        setError(`Erreur ${res.status}: ${errorData.detail || 'Impossible de charger les conversations'}`);
+        setConversations([]);
       }
     } catch (err) {
       console.error('Erreur réseau:', err);
-      setMessages([]);
+      setError('Erreur de connexion au serveur');
+      setConversations([]);
     } finally {
-      setLoadingMessages(false);
+      setLoading(false);
     }
   };
 
-  const handleSelectConversation = (conversationId) => {
-    onSelectConversation(conversationId);
-    loadConversationMessages(conversationId);
-    onClose(); // Fermer le panneau après sélection
-  };
+  const createNewConversation = async () => {
+    try {
+      // CHANGÉ: Utilisation de /conversations au lieu de /history/conversations
+      const res = await fetch('http://127.0.0.1:8000/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ title: null })
+      });
 
-  const handleCreateConversation = async () => {
-    const newConvId = await onCreateConversation();
-    if (newConvId) {
-      handleSelectConversation(newConvId);
+      if (res.ok) {
+        const newConv = await res.json();
+        setConversations(prev => [newConv, ...prev]);
+        onSelectConversation(newConv.id, newConv.title);
+        return newConv.id;
+      } else {
+        throw new Error('Erreur création conversation');
+      }
+    } catch (err) {
+      console.error('Erreur:', err);
+      alert("Erreur lors de la création de la conversation");
+      return null;
     }
   };
 
-  const handleDeleteConversation = async (conversationId) => {
+  const deleteConversation = async (conversationId, e) => {
+    e.stopPropagation();
+    
     if (!window.confirm('Voulez-vous vraiment supprimer cette conversation ?')) {
       return;
     }
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/history/${conversationId}`, {
+      // CHANGÉ: Utilisation de /conversations/{id} au lieu de /history/{id}
+      const res = await fetch(`http://127.0.0.1:8000/conversations/${conversationId}`, {
         method: 'DELETE',
         headers: { 
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
       if (res.ok) {
-        alert('Conversation supprimée avec succès');
-        onRefresh(); // Recharger la liste
+        // Retirer la conversation de la liste
+        setConversations(prev => prev.filter(c => c.id !== conversationId));
+        
+        // Si c'était la conversation active, on la désactive
         if (conversationId === activeConversationId) {
-          onSelectConversation(null); // Réinitialiser la conversation active
-          setMessages([]);
+          onSelectConversation(null, "Nouvelle conversation");
         }
       } else {
-        alert('Erreur lors de la suppression de la conversation');
+        const errorData = await res.json().catch(() => ({ detail: 'Erreur inconnue' }));
+        alert(`Erreur: ${errorData.detail || 'Impossible de supprimer la conversation'}`);
       }
     } catch (err) {
       console.error('Erreur:', err);
-      alert('Erreur réseau');
+      alert('Erreur réseau lors de la suppression');
     }
   };
 
   const clearAllHistory = async () => {
-    if (!window.confirm('Voulez-vous vraiment effacer TOUT l\'historique ? Cette action est irréversible.')) {
+    if (!window.confirm('Voulez-vous vraiment effacer TOUT l\'historique ?')) {
       return;
     }
 
     try {
+      // RESTE: Utilisation de /history pour supprimer tout l'historique
       const res = await fetch('http://127.0.0.1:8000/history', {
         method: 'DELETE',
         headers: { 
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
       if (res.ok) {
+        setConversations([]);
+        onSelectConversation(null, "Nouvelle conversation");
         alert('Historique effacé avec succès');
-        onRefresh();
-        onSelectConversation(null);
-        setMessages([]);
       } else {
-        alert('Erreur lors de l\'effacement de l\'historique');
+        const errorData = await res.json().catch(() => ({ detail: 'Erreur inconnue' }));
+        alert(`Erreur: ${errorData.detail || 'Impossible d\'effacer l\'historique'}`);
       }
     } catch (err) {
       console.error('Erreur:', err);
@@ -120,21 +147,35 @@ export default function HistoryPanel({
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getLastMessagePreview = (conversationId) => {
-    const convMessages = messages.filter(m => m.conversation_id === conversationId);
-    if (convMessages.length === 0) return "Aucun message";
-    const lastMessage = convMessages[convMessages.length - 1];
-    return `${lastMessage.role === 'user' ? 'Vous: ' : 'IA: '}${lastMessage.content.substring(0, 30)}${lastMessage.content.length > 30 ? '...' : ''}`;
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 60) {
+        return `il y a ${diffMins} min`;
+      } else if (diffHours < 24) {
+        return `il y a ${diffHours} h`;
+      } else if (diffDays === 1) {
+        return 'hier';
+      } else if (diffDays < 7) {
+        return `il y a ${diffDays} jours`;
+      } else {
+        return date.toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: '2-digit',
+          year: 'numeric'
+        });
+      }
+    } catch (e) {
+      console.error('Erreur de formatage de date:', e);
+      return dateString || '';
+    }
   };
 
   if (!isOpen) return null;
@@ -142,94 +183,111 @@ export default function HistoryPanel({
   return (
     <div className="history-panel">
       <div className="history-header">
-        <h3>Conversations</h3>
+        <h3>Historique des conversations</h3>
         <div className="history-actions">
           <button 
-            onClick={onRefresh}
+            onClick={loadConversations}
             className="refresh-history-btn"
             disabled={loading}
+            title="Rafraîchir"
           >
-            🔄
+            {loading ? '🔄' : '🔄'}
           </button>
           <button 
-            onClick={handleCreateConversation}
+            onClick={createNewConversation}
             className="refresh-history-btn"
             style={{ background: '#10b981' }}
+            title="Nouvelle conversation"
           >
             +
           </button>
           <button 
             onClick={clearAllHistory}
             className="clear-history-btn"
+            disabled={conversations.length === 0 || loading}
+            title="Effacer tout"
           >
             Effacer tout
           </button>
           <button 
             onClick={onClose}
             className="close-history-btn"
+            title="Fermer"
           >
             ✕
           </button>
         </div>
       </div>
 
-      <div 
-        className="history-messages" 
-        ref={historyScrollRef}
-      >
+      <div className="history-content">
         {loading ? (
           <div className="history-loading">
             <div className="loading-spinner"></div>
             Chargement des conversations...
           </div>
+        ) : error ? (
+          <div className="history-error">
+            <p>{error}</p>
+            <button 
+              onClick={loadConversations}
+              className="retry-btn"
+            >
+              Réessayer
+            </button>
+          </div>
         ) : conversations.length === 0 ? (
           <div className="history-empty">
-            Aucune conversation
+            <p>Aucune conversation</p>
+            <p className="history-empty-subtitle">
+              Commencez par envoyer un message dans le chat principal
+            </p>
           </div>
         ) : (
-          conversations.map((conv, i) => (
-            <div 
-              key={i} 
-              className={`history-bubble ${conv.id === activeConversationId ? 'active' : ''}`}
-              onClick={() => handleSelectConversation(conv.id)}
-              style={{
-                background: conv.id === activeConversationId ? '#e0e7ff' : '',
-                borderLeft: conv.id === activeConversationId ? '4px solid #6366f1' : ''
-              }}
-            >
-              <div className="history-meta">
-                <span className="history-role" style={{ fontWeight: 'bold', color: '#1f2937' }}>
-                  {conv.title}
-                </span>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteConversation(conv.id);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#ef4444',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  ×
-                </button>
+          <div className="conversations-list">
+            {conversations.map((conv) => (
+              <div 
+                key={conv.id} 
+                className={`conversation-item ${conv.id === activeConversationId ? 'active' : ''}`}
+                onClick={() => onSelectConversation(conv.id, conv.title || "Conversation")}
+              >
+                <div className="conversation-header">
+                  <div className="conversation-title-wrapper">
+                    <h4 className="conversation-title">
+                      {conv.title || "Conversation sans titre"}
+                    </h4>
+                    {conv.id === activeConversationId && (
+                      <span className="active-badge">Actuelle</span>
+                    )}
+                  </div>
+                  <button 
+                    onClick={(e) => deleteConversation(conv.id, e)}
+                    className="delete-conversation-btn"
+                    title="Supprimer cette conversation"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="conversation-details">
+                  <span className="conversation-date">
+                    {formatDate(conv.updated_at)}
+                  </span>
+                  
+                </div>
               </div>
-              <div className="history-content" style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: '4px' }}>
-                {formatDate(conv.updated_at)}
-              </div>
-              <div className="history-content" style={{ marginTop: '6px' }}>
-                {getLastMessagePreview(conv.id)}
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
       <div className="history-footer">
-        {conversations.length} conversation(s)
+        {conversations.length > 0 && (
+          <div className="conversation-count">
+            {conversations.length} conversation(s)
+          </div>
+        )}
+        <div className="history-help">
+          Cliquez sur une conversation pour la charger
+        </div>
       </div>
     </div>
   );
