@@ -387,3 +387,27 @@
 .rename-cancel-btn:hover {
   background: #4b5563;
 }
+
+@media (max-width: 480px) {
+  .history-panel {
+    width: 100%;
+  }
+
+  .history-header {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .history-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .conversation-title {
+    font-size: 0.9rem;
+  }
+
+  .conversation-actions {
+    gap: 4px;
+  }
+}
