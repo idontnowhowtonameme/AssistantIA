@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import HistoryPanel from "./HistoryPanel.jsx";
+import AdminPanel from "./AdminPanel.jsx";
 import { apiFetch, clearToken } from "../api.js";
 
 export default function Chat() {
@@ -12,8 +13,29 @@ export default function Chat() {
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [conversationTitle, setConversationTitle] = useState("Nouvelle conversation");
 
+  // admin / user info
+  const [me, setMe] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    // récupère le rôle pour afficher le bouton admin
+    const loadMe = async () => {
+      try {
+        const data = await apiFetch("/auth/me");
+        setMe(data);
+      } catch (e) {
+        // token invalide/expiré => logout
+        if (e.status === 401) {
+          clearToken();
+          window.location.href = "/login";
+        }
+      }
+    };
+    loadMe();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -120,6 +142,8 @@ export default function Chat() {
     await loadConversationMessages(conversationId);
   };
 
+  const isAdmin = me?.role === "admin";
+
   return (
     <>
       <div className="chat-container">
@@ -149,6 +173,13 @@ export default function Chat() {
               <button onClick={() => setShowHistory(!showHistory)} className="history-btn">
                 Historique
               </button>
+
+              {isAdmin && (
+                <button onClick={() => setShowAdmin(true)} className="admin-btn">
+                  Admin
+                </button>
+              )}
+
               <button onClick={() => setShowDeleteModal(true)} className="delete-account-btn">
                 Supprimer compte
               </button>
@@ -245,6 +276,12 @@ export default function Chat() {
           </div>
         </div>
       )}
+
+      <AdminPanel
+        isOpen={showAdmin}
+        onClose={() => setShowAdmin(false)}
+        currentUserId={me?.id || null}
+      />
     </>
   );
 }

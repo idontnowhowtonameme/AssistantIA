@@ -25,6 +25,15 @@ class MeOut(BaseModel):
     created_at: str
     role: Optional[str] = None
 
+class UserOut(BaseModel):
+    id: str
+    email: EmailStr
+    created_at: str
+    role: Optional[str] = None
+
+
+class UserListOut(BaseModel):
+    items: List[UserOut]
 
 # ---------- CONVERSATIONS ----------
 class ConversationCreateIn(BaseModel):
