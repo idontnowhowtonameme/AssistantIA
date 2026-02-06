@@ -17,7 +17,6 @@ const PrivateRoute = ({ children }) => {
         setIsValidating(false);
         return;
       }
-      // On considère le token valide s'il existe pour simplifier
       setIsAuthenticated(true);
       setIsValidating(false);
     };

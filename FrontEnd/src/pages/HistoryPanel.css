@@ -78,7 +78,24 @@
   transform: translateY(-1px);
 }
 
-/* Bouton Effacer l'historique - Orange (Warning) */
+/* Bouton Nouvelle conversation - Vert */
+.new-conversation-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border: none;
+  transition: all 0.2s;
+  background: var(--success);
+  color: white;
+}
+
+.new-conversation-btn:hover {
+  background: var(--success-hover);
+  transform: translateY(-1px);
+}
+
+/* Bouton Effacer tout l'historique - Orange (Warning) */
 .clear-history-btn {
   padding: 6px 12px;
   border-radius: 6px;
@@ -155,35 +172,28 @@
   word-break: break-word;
   transition: all 0.2s;
   border-left: 4px solid transparent;
+  border: 1px solid #e5e7eb;
 }
 
 .history-bubble:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateX(3px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.history-bubble.user {
-  background: var(--history-user-bg);
-  color: var(--history-user-text);
+.history-bubble.active {
+  background: #e0e7ff;
   border-left-color: #6366f1;
-}
-
-.history-bubble.assistant {
-  background: var(--history-assistant-bg);
-  color: var(--history-assistant-text);
-  border-left-color: #9ca3af;
 }
 
 .history-meta {
   display: flex;
   justify-content: space-between;
   margin-bottom: 4px;
-  font-size: 0.7rem;
-  color: #6b7280;
 }
 
 .history-role {
   font-weight: 600;
+  color: #1f2937;
 }
 
 .history-content {
@@ -244,6 +254,7 @@
   }
   
   .refresh-history-btn,
+  .new-conversation-btn,
   .clear-history-btn,
   .close-history-btn {
     padding: 8px;

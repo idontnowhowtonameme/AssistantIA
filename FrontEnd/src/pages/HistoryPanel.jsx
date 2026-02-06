@@ -1,29 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) {
-  const [historyMessages, setHistoryMessages] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+export default function HistoryPanel({ 
+  isOpen, 
+  onClose, 
+  conversations, 
+  loading,
+  onSelectConversation,
+  onCreateConversation,
+  activeConversationId,
+  onRefresh,
+  token
+}) {
+  const [showDeleteConvModal, setShowDeleteConvModal] = useState(false);
+  const [convToDelete, setConvToDelete] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const historyScrollRef = useRef(null);
 
-  // Charger l'historique quand le panneau s'ouvre
-  useEffect(() => {
-    if (isOpen) {
-      loadHistory();
-    }
-  }, [isOpen]);
-
-  // Scroll automatique pour l'historique
   useEffect(() => {
     if (historyScrollRef.current && isOpen) {
       historyScrollRef.current.scrollTop = historyScrollRef.current.scrollHeight;
     }
-  }, [historyMessages, isOpen]);
+  }, [messages, isOpen]);
 
-  // Fonction pour charger l'historique depuis l'API
-  const loadHistory = async () => {
-    setLoadingHistory(true);
+  const loadConversationMessages = async (conversationId) => {
+    if (!conversationId) return;
+    
+    setLoadingMessages(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/history', {
+      const res = await fetch(`http://127.0.0.1:8000/history/${conversationId}?limit=10&offset=0`, {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}` 
@@ -32,47 +37,104 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
 
       if (res.ok) {
         const data = await res.json();
-        setHistoryMessages(data.items || []);
+        setMessages(data.items || []);
       } else {
-        console.error('Erreur lors du chargement de l\'historique');
-        setHistoryMessages([]);
+        console.error('Erreur lors du chargement des messages');
+        setMessages([]);
       }
     } catch (err) {
       console.error('Erreur réseau:', err);
-      setHistoryMessages([]);
+      setMessages([]);
     } finally {
-      setLoadingHistory(false);
+      setLoadingMessages(false);
     }
   };
 
-  // Fonction pour effacer l'historique
-  const clearHistory = async () => {
-    if (window.confirm('Voulez-vous vraiment effacer tout l\'historique ?')) {
-      try {
-        const res = await fetch('http://127.0.0.1:8000/history', {
-          method: 'DELETE',
-          headers: { 
-            'Authorization': `Bearer ${token}` 
-          }
-        });
+  const handleSelectConversation = (conversationId) => {
+    onSelectConversation(conversationId);
+    loadConversationMessages(conversationId);
+    onClose(); // Fermer le panneau après sélection
+  };
 
-        if (res.ok) {
-          setHistoryMessages([]);
-          alert('Historique effacé avec succès');
-        } else {
-          alert('Erreur lors de l\'effacement de l\'historique');
+  const handleCreateConversation = async () => {
+    const newConvId = await onCreateConversation();
+    if (newConvId) {
+      handleSelectConversation(newConvId);
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette conversation ?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/history/${conversationId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
         }
-      } catch (err) {
-        console.error('Erreur:', err);
-        alert('Erreur réseau');
+      });
+
+      if (res.ok) {
+        alert('Conversation supprimée avec succès');
+        onRefresh(); // Recharger la liste
+        if (conversationId === activeConversationId) {
+          onSelectConversation(null); // Réinitialiser la conversation active
+          setMessages([]);
+        }
+      } else {
+        alert('Erreur lors de la suppression de la conversation');
       }
+    } catch (err) {
+      console.error('Erreur:', err);
+      alert('Erreur réseau');
     }
   };
 
-  // Formater la date
+  const clearAllHistory = async () => {
+    if (!window.confirm('Voulez-vous vraiment effacer TOUT l\'historique ? Cette action est irréversible.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/history', {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+
+      if (res.ok) {
+        alert('Historique effacé avec succès');
+        onRefresh();
+        onSelectConversation(null);
+        setMessages([]);
+      } else {
+        alert('Erreur lors de l\'effacement de l\'historique');
+      }
+    } catch (err) {
+      console.error('Erreur:', err);
+      alert('Erreur réseau');
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('fr-FR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getLastMessagePreview = (conversationId) => {
+    const convMessages = messages.filter(m => m.conversation_id === conversationId);
+    if (convMessages.length === 0) return "Aucun message";
+    const lastMessage = convMessages[convMessages.length - 1];
+    return `${lastMessage.role === 'user' ? 'Vous: ' : 'IA: '}${lastMessage.content.substring(0, 30)}${lastMessage.content.length > 30 ? '...' : ''}`;
   };
 
   if (!isOpen) return null;
@@ -80,20 +142,27 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
   return (
     <div className="history-panel">
       <div className="history-header">
-        <h3>Historique</h3>
+        <h3>Conversations</h3>
         <div className="history-actions">
           <button 
-            onClick={loadHistory}
+            onClick={onRefresh}
             className="refresh-history-btn"
-            disabled={loadingHistory}
+            disabled={loading}
           >
             🔄
           </button>
           <button 
-            onClick={clearHistory}
+            onClick={handleCreateConversation}
+            className="refresh-history-btn"
+            style={{ background: '#10b981' }}
+          >
+            +
+          </button>
+          <button 
+            onClick={clearAllHistory}
             className="clear-history-btn"
           >
-            Effacer
+            Effacer tout
           </button>
           <button 
             onClick={onClose}
@@ -108,33 +177,51 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
         className="history-messages" 
         ref={historyScrollRef}
       >
-        {loadingHistory ? (
+        {loading ? (
           <div className="history-loading">
             <div className="loading-spinner"></div>
-            Chargement de l'historique...
+            Chargement des conversations...
           </div>
-        ) : historyMessages.length === 0 ? (
+        ) : conversations.length === 0 ? (
           <div className="history-empty">
-            Aucun message dans l'historique
+            Aucune conversation
           </div>
         ) : (
-          historyMessages.map((msg, i) => (
+          conversations.map((conv, i) => (
             <div 
               key={i} 
-              className={`history-bubble ${msg.role}`}
-              onClick={() => onLoadMessage(msg.content, msg.role)}
-              title="Cliquer pour ajouter au chat"
+              className={`history-bubble ${conv.id === activeConversationId ? 'active' : ''}`}
+              onClick={() => handleSelectConversation(conv.id)}
+              style={{
+                background: conv.id === activeConversationId ? '#e0e7ff' : '',
+                borderLeft: conv.id === activeConversationId ? '4px solid #6366f1' : ''
+              }}
             >
               <div className="history-meta">
-                <span className="history-role">
-                  {msg.role === 'user' ? 'Vous' : 'Assistant'}
+                <span className="history-role" style={{ fontWeight: 'bold', color: '#1f2937' }}>
+                  {conv.title}
                 </span>
-                <span className="history-time">
-                  {formatDate(msg.created_at)}
-                </span>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conv.id);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  ×
+                </button>
               </div>
-              <div className="history-content">
-                {msg.content.length > 100 ? `${msg.content.substring(0, 100)}...` : msg.content}
+              <div className="history-content" style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: '4px' }}>
+                {formatDate(conv.updated_at)}
+              </div>
+              <div className="history-content" style={{ marginTop: '6px' }}>
+                {getLastMessagePreview(conv.id)}
               </div>
             </div>
           ))
@@ -142,7 +229,7 @@ export default function HistoryPanel({ isOpen, onClose, onLoadMessage, token }) 
       </div>
 
       <div className="history-footer">
-        {historyMessages.length} message(s) dans l'historique
+        {conversations.length} conversation(s)
       </div>
     </div>
   );
