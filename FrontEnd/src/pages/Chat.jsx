@@ -1,60 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
-import HistoryPanel from './HistoryPanel';
-import './HistoryPanel.css';
+import React, { useEffect, useRef, useState } from "react";
+import HistoryPanel from "./HistoryPanel.jsx";
+import { apiFetch, clearToken } from "../api.js";
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [conversationTitle, setConversationTitle] = useState("Nouvelle conversation");
+
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 150)}px`;
-    }
+    if (!inputRef.current) return;
+    inputRef.current.style.height = "auto";
+    inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 150)}px`;
   }, [input]);
 
   const handleLogout = () => {
-    localStorage.clear();
+    clearToken();
     window.location.href = "/login";
   };
 
   const handleDeleteAccount = async () => {
     setShowDeleteModal(false);
-    
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://127.0.0.1:8000/users/me', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (res.ok) {
-        alert("Votre compte a été supprimé avec succès.");
-        localStorage.clear();
-        window.location.href = "/login";
-      } else {
-        const error = await res.json().catch(() => ({ detail: 'Erreur inconnue' }));
-        alert("Erreur lors de la suppression : " + error.detail);
-      }
+    try {
+      await apiFetch("/users/me", { method: "DELETE" });
+      alert("Votre compte a été supprimé avec succès.");
+      localStorage.clear();
+      window.location.href = "/login";
     } catch (err) {
-      console.error("Erreur:", err);
-      alert("Erreur réseau lors de la suppression.");
+      alert("Erreur lors de la suppression : " + (err.message || "Erreur"));
     }
   };
 
@@ -69,32 +54,18 @@ export default function Chat() {
       setMessages([]);
       return;
     }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://127.0.0.1:8000/history/${conversationId}?limit=100&offset=0`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (res.ok) {
-        const data = await res.json();
-        const formattedMessages = data.items.map(item => ({
-          role: item.role,
-          content: item.content,
-          id: item.id,
-          createdAt: item.created_at
-        }));
-        setMessages(formattedMessages);
-      } else {
-        console.error('Erreur lors du chargement des messages');
-        setMessages([]);
-      }
+    try {
+      const data = await apiFetch(`/history/${conversationId}?limit=100&offset=0`);
+      const formatted = (data.items || []).map((item) => ({
+        role: item.role,
+        content: item.content,
+        id: item.id,
+        createdAt: item.created_at,
+      }));
+      setMessages(formatted);
     } catch (err) {
-      console.error('Erreur réseau:', err);
+      console.error(err);
       setMessages([]);
     }
   };
@@ -104,68 +75,48 @@ export default function Chat() {
     const text = input.trim();
     if (!text || loading) return;
 
-    // 1. Ajouter le message utilisateur à l'écran
-    const userMsg = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    const userMsg = { role: "user", content: text };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
     setLoading(true);
 
     try {
-      // 2. Appel API avec conversation_id
       const payload = { message: text };
-      if (activeConversationId) {
-        payload.conversation_id = activeConversationId;
-      }
+      if (activeConversationId) payload.conversation_id = activeConversationId;
 
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://127.0.0.1:8000/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const data = await apiFetch("/ai/chat", { method: "POST", body: payload });
 
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
-        
-        // Si nouvelle conversation créée automatiquement par le backend
-        if (!activeConversationId && data.conversation_id) {
-          setActiveConversationId(data.conversation_id);
-          setConversationTitle("Nouvelle conversation");
-        }
-      } else {
-        const error = await res.json().catch(() => ({ detail: 'Erreur inconnue' }));
-        console.error("Erreur API:", error);
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: error.detail === "Invalid or expired token" 
-            ? "Votre session a expiré. Veuillez vous reconnecter."
-            : "Erreur lors de la génération de la réponse. Veuillez réessayer." 
-        }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
+
+      if (!activeConversationId && data.conversation_id) {
+        setActiveConversationId(data.conversation_id);
+        setConversationTitle("Nouvelle conversation");
       }
     } catch (err) {
-      console.error("Erreur réseau:", err);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: "Erreur de connexion au serveur. Veuillez vérifier votre connexion internet." 
-      }]);
+      console.error(err);
+
+      const msg =
+        err.message === "Invalid or expired token"
+          ? "Votre session a expiré. Veuillez vous reconnecter."
+          : "Erreur lors de la génération de la réponse. Veuillez réessayer.";
+
+      setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
+
+      if (err.status === 401) {
+        clearToken();
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSelectConversation = async (conversationId, title) => {
-    if (conversationId === activeConversationId) {
-      return; // Déjà sélectionnée
-    }
-    
+    if (conversationId === activeConversationId) return;
+
     setActiveConversationId(conversationId);
     setConversationTitle(title || "Conversation");
-    
-    // Charger les messages de la conversation
+    setShowHistory(false);
+
     await loadConversationMessages(conversationId);
   };
 
@@ -174,25 +125,26 @@ export default function Chat() {
       <div className="chat-container">
         <div className="glass-card chat-card">
           <div className="chat-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <h2>{conversationTitle}</h2>
-              <button 
+              <button
                 onClick={startNewConversation}
                 style={{
-                  padding: '6px 12px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  padding: "6px 12px",
+                  background: "#10b981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "0.85rem",
+                  cursor: "pointer",
+                  fontWeight: "500",
                 }}
                 title="Commencer une nouvelle conversation"
               >
                 + Nouvelle
               </button>
             </div>
+
             <div className="chat-header-buttons">
               <button onClick={() => setShowHistory(!showHistory)} className="history-btn">
                 Historique
@@ -211,20 +163,20 @@ export default function Chat() {
               <div className="bubble assistant welcome-message">
                 <div className="welcome-title">👋 Bonjour !</div>
                 <div className="welcome-text">
-                  Je suis votre assistant IA. Posez-moi n'importe quelle question pour démarrer une conversation.
+                  Je suis votre assistant IA. Posez-moi n&apos;importe quelle question pour démarrer une conversation.
                 </div>
                 {!activeConversationId && (
-                  <div className="welcome-tip">
-                    Votre première question créera automatiquement une nouvelle conversation.
-                  </div>
+                  <div className="welcome-tip">Votre première question créera automatiquement une nouvelle conversation.</div>
                 )}
               </div>
             )}
+
             {messages.map((m, i) => (
-              <div key={i} className={`bubble ${m.role}`}>
+              <div key={m.id || i} className={`bubble ${m.role}`}>
                 {m.content}
               </div>
             ))}
+
             {loading && (
               <div className="bubble assistant">
                 <div className="thinking">
@@ -238,66 +190,55 @@ export default function Chat() {
           </div>
 
           <form className="chat-input-wrapper" onSubmit={sendMessage}>
-            <textarea 
+            <textarea
               ref={inputRef}
-              placeholder="Écrivez votre message ici..." 
-              value={input} 
+              placeholder="Écrivez votre message ici..."
+              value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { 
-                if(e.key === 'Enter' && !e.shiftKey) { 
-                  e.preventDefault(); 
-                  sendMessage(e); 
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(e);
                 }
               }}
               disabled={loading}
               rows="1"
             />
-            <button 
-              type="submit" 
-              disabled={loading || !input.trim()}
-              className={loading ? 'sending' : ''}
-            >
+            <button type="submit" disabled={loading || !input.trim()} className={loading ? "sending" : ""}>
               {loading ? (
                 <>
                   <span className="sending-spinner"></span>
                   Envoi...
                 </>
-              ) : 'Envoyer'}
+              ) : (
+                "Envoyer"
+              )}
             </button>
           </form>
         </div>
 
-        <HistoryPanel 
-          isOpen={showHistory} 
+        <HistoryPanel
+          isOpen={showHistory}
           onClose={() => setShowHistory(false)}
           onSelectConversation={handleSelectConversation}
           activeConversationId={activeConversationId}
-          token={localStorage.getItem('token')}
         />
       </div>
 
-      {/* Modal de confirmation de suppression */}
       {showDeleteModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{marginBottom: '15px', color: '#1f2937'}}>
-              ⚠️ Supprimer votre compte
-            </h3>
-            <p style={{marginBottom: '25px', color: '#4b5563', lineHeight: '1.6'}}>
-              Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est <strong style={{color: '#dc2626'}}>irréversible</strong>.
-              Toutes vos conversations et données personnelles seront définitivement supprimées.
+            <h3 style={{ marginBottom: "15px", color: "#1f2937" }}>⚠️ Supprimer votre compte</h3>
+            <p style={{ marginBottom: "25px", color: "#4b5563", lineHeight: "1.6" }}>
+              Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est{" "}
+              <strong style={{ color: "#dc2626" }}>irréversible</strong>. Toutes vos conversations et données personnelles
+              seront définitivement supprimées.
             </p>
             <div className="modal-actions">
-              <button 
-                onClick={() => setShowDeleteModal(false)}
-                className="cancel-btn"
-              >
+              <button onClick={() => setShowDeleteModal(false)} className="cancel-btn">
                 Annuler
               </button>
-              <button 
-                onClick={handleDeleteAccount}
-                className="confirm-delete-btn"
-              >
+              <button onClick={handleDeleteAccount} className="confirm-delete-btn">
                 Confirmer la suppression
               </button>
             </div>
