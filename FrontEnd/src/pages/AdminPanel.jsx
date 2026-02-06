@@ -11,7 +11,7 @@ export default function AdminPanel({ isOpen, onClose, currentUserId }) {
     setLoading(true);
     setErr("");
     try {
-      const data = await apiFetch("/users"); // admin-only
+      const data = await apiFetch("/users");
       setUsers(data.items || []);
     } catch (e) {
       setErr(e.message || "Impossible de charger les utilisateurs.");
@@ -29,18 +29,15 @@ export default function AdminPanel({ isOpen, onClose, currentUserId }) {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return users;
-    return users.filter((u) => {
-      const hay = `${u.email} ${u.id} ${u.role || ""}`.toLowerCase();
-      return hay.includes(needle);
-    });
+    return users.filter((u) => `${u.email} ${u.id} ${u.role || ""}`.toLowerCase().includes(needle));
   }, [users, q]);
 
   const deleteUser = async (userId, email) => {
     if (userId === currentUserId) {
-      alert("Tu ne peux pas supprimer ton propre compte depuis cette fenêtre. Utilise 'Supprimer compte'.");
+      alert("Tu ne peux pas supprimer ton propre compte depuis ici.");
       return;
     }
-    if (!window.confirm(`Supprimer l'utilisateur ${email} ? Cette action est irréversible.`)) return;
+    if (!window.confirm(`Supprimer l'utilisateur ${email} ?`)) return;
 
     try {
       await apiFetch(`/users/${userId}`, { method: "DELETE" });
@@ -100,8 +97,7 @@ export default function AdminPanel({ isOpen, onClose, currentUserId }) {
               >
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {u.email}
-                    {u.id === currentUserId ? " (moi)" : ""}
+                    {u.email} {u.id === currentUserId ? "(moi)" : ""}
                   </div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>{u.id}</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>role: {u.role || "user"}</div>
@@ -111,7 +107,6 @@ export default function AdminPanel({ isOpen, onClose, currentUserId }) {
                   className="delete-account-btn"
                   onClick={() => deleteUser(u.id, u.email)}
                   disabled={u.id === currentUserId}
-                  title={u.id === currentUserId ? "Impossible" : "Supprimer"}
                 >
                   Supprimer
                 </button>

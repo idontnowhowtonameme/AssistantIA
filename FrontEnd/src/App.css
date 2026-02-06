@@ -557,3 +557,20 @@ input:focus, textarea:focus {
   background: var(--info-hover);
   transform: translateY(-1px);
 }
+
+.admin-btn {
+  background: var(--info);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.admin-btn:hover {
+  background: var(--info-hover);
+  transform: translateY(-1px);
+}

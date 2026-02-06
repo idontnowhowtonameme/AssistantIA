@@ -1,4 +1,3 @@
-# BackEnd/app/routers/conversations.py
 import uuid
 from datetime import datetime, timezone
 
@@ -6,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import dbconversations, dbhistorique, ConvQ, HistQ
 from app.dependencies import get_current_user
-from app.schemas import ConversationCreateIn, ConversationOut, ConversationListOut
+from app.schemas import ConversationCreateIn, ConversationUpdateIn, ConversationOut, ConversationListOut
 
 router = APIRouter()
 
@@ -39,37 +38,51 @@ def create_conversation(payload: ConversationCreateIn, user=Depends(get_current_
 def list_conversations(user=Depends(get_current_user)):
     """
     Liste les conversations de l'utilisateur (triées par updated_at DESC).
-    (L'admin, lui, verra seulement les siennes ici — c'est un choix.
-     Si tu veux "admin voit tout", on peut ajouter un query param.)
     """
     items = dbconversations.search(ConvQ.user_id == user["id"])
     items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
     return {"items": items}
 
 
-@router.delete("/{conversation_id}")
-def delete_conversation(conversation_id: str, user=Depends(get_current_user)):
+@router.patch("/{conversation_id}", response_model=ConversationOut)
+def rename_conversation(conversation_id: str, payload: ConversationUpdateIn, user=Depends(get_current_user)):
     """
-    Supprime une conversation :
-    - owner OU admin
-    + supprime tous les messages associés.
+    Renomme une conversation (si elle appartient à l'utilisateur).
     """
-    is_admin = user.get("role") == "admin"
-
-    conv = dbconversations.get(ConvQ.id == conversation_id)
+    conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    if (not is_admin) and conv.get("user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    new_title = (payload.title or "").strip()
+    if not new_title:
+        raise HTTPException(status_code=422, detail="Title cannot be empty")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    dbconversations.update(
+        {"title": new_title, "updated_at": now},
+        (ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]),
+    )
+
+    conv["title"] = new_title
+    conv["updated_at"] = now
+    return conv
+
+
+@router.delete("/{conversation_id}")
+def delete_conversation(conversation_id: str, user=Depends(get_current_user)):
+    """
+    Supprime une conversation (si elle appartient à l'utilisateur),
+    + supprime tous les messages associés.
+    """
+    conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
 
     # 1) supprimer les messages liés
-    removed_msgs = dbhistorique.remove(HistQ.conversation_id == conversation_id)
+    removed_msgs = dbhistorique.remove((HistQ.user_id == user["id"]) & (HistQ.conversation_id == conversation_id))
 
     # 2) supprimer la conversation
-    removed_conv = dbconversations.remove(ConvQ.id == conversation_id)
+    dbconversations.remove((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
 
-    return {
-        "deleted_messages": len(removed_msgs),
-        "deleted_conversation": len(removed_conv) > 0,
-    }
+    return {"deleted_messages": len(removed_msgs), "deleted_conversation": True}

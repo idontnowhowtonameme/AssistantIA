@@ -1,19 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import HistoryPanel from "./HistoryPanel.jsx";
-import AdminPanel from "./AdminPanel.jsx";
+import AdminPanel from "./AdminPanel.jsx"; // ✅ popup admin
 import { apiFetch, clearToken } from "../api.js";
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [showHistory, setShowHistory] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [conversationTitle, setConversationTitle] = useState("Nouvelle conversation");
 
-  // admin / user info
+  // ✅ Admin
   const [me, setMe] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
 
@@ -21,13 +22,11 @@ export default function Chat() {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    // récupère le rôle pour afficher le bouton admin
     const loadMe = async () => {
       try {
         const data = await apiFetch("/auth/me");
         setMe(data);
       } catch (e) {
-        // token invalide/expiré => logout
         if (e.status === 401) {
           clearToken();
           window.location.href = "/login";
@@ -54,7 +53,6 @@ export default function Chat() {
 
   const handleDeleteAccount = async () => {
     setShowDeleteModal(false);
-
     try {
       await apiFetch("/users/me", { method: "DELETE" });
       alert("Votre compte a été supprimé avec succès.");
@@ -97,8 +95,7 @@ export default function Chat() {
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMsg = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setLoading(true);
 
@@ -116,9 +113,8 @@ export default function Chat() {
       }
     } catch (err) {
       console.error(err);
-
       const msg =
-        err.message === "Invalid or expired token"
+        err.status === 401
           ? "Votre session a expiré. Veuillez vous reconnecter."
           : "Erreur lors de la génération de la réponse. Veuillez réessayer.";
 
@@ -126,6 +122,7 @@ export default function Chat() {
 
       if (err.status === 401) {
         clearToken();
+        window.location.href = "/login";
       }
     } finally {
       setLoading(false);
@@ -140,6 +137,13 @@ export default function Chat() {
     setShowHistory(false);
 
     await loadConversationMessages(conversationId);
+  };
+
+  // ✅ callback rename depuis HistoryPanel
+  const handleRenameConversation = (conversationId, newTitle) => {
+    if (conversationId === activeConversationId) {
+      setConversationTitle(newTitle || "Conversation");
+    }
   };
 
   const isAdmin = me?.role === "admin";
@@ -194,7 +198,7 @@ export default function Chat() {
               <div className="bubble assistant welcome-message">
                 <div className="welcome-title">👋 Bonjour !</div>
                 <div className="welcome-text">
-                  Je suis votre assistant IA. Posez-moi n&apos;importe quelle question pour démarrer une conversation.
+                  Je suis votre assistant IA. Posez-moi n'importe quelle question pour démarrer une conversation.
                 </div>
                 {!activeConversationId && (
                   <div className="welcome-tip">Votre première question créera automatiquement une nouvelle conversation.</div>
@@ -252,7 +256,9 @@ export default function Chat() {
           isOpen={showHistory}
           onClose={() => setShowHistory(false)}
           onSelectConversation={handleSelectConversation}
+          onRenameConversation={handleRenameConversation} // ✅ rename
           activeConversationId={activeConversationId}
+          token={localStorage.getItem("token")}
         />
       </div>
 
@@ -277,6 +283,7 @@ export default function Chat() {
         </div>
       )}
 
+      {/* ✅ popup admin */}
       <AdminPanel
         isOpen={showAdmin}
         onClose={() => setShowAdmin(false)}

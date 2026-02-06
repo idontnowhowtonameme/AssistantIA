@@ -327,3 +327,63 @@
     font-size: 0.95rem;
   }
 }
+
+.conversation-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.rename-conversation-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+  line-height: 1;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+  border-radius: 4px;
+  color: #3b82f6;
+}
+
+.rename-conversation-btn:hover {
+  opacity: 1;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.rename-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.95rem;
+}
+
+.rename-save-btn,
+.rename-cancel-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.rename-save-btn {
+  background: #10b981;
+  color: white;
+}
+
+.rename-save-btn:hover {
+  background: #059669;
+}
+
+.rename-cancel-btn {
+  background: #6b7280;
+  color: white;
+}
+
+.rename-cancel-btn:hover {
+  background: #4b5563;
+}
