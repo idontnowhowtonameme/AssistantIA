@@ -365,7 +365,7 @@ suppression atomique : utilisateur + historique
 
 toutes les routes sensibles sont protégées par JWT
 
-### 🧠 Contexte conversationnel (IA)
+### 🧠 Contexte conversationnel et mémoire limitée
 
 L’IA dispose d’un contexte de conversation basé sur l’historique utilisateur.
 
@@ -373,6 +373,158 @@ L’IA dispose d’un contexte de conversation basé sur l’historique utilisat
 - les derniers messages de l’utilisateur sont récupérés depuis l’historique
 - seuls les N derniers échanges sont transmis au LLM
 - cela permet de conserver une continuité de dialogue tout en maîtrisant la taille du prompt
+
+💬 Gestion multi-conversationnelle
+
+Le backend implémente une gestion multi-conversationnelle par utilisateur, permettant de gérer plusieurs discussions distinctes avec l’IA (threads).
+
+🧩 Principe général
+
+Un utilisateur peut posséder plusieurs conversations
+
+Chaque conversation est identifiée par un conversation_id
+
+Chaque message appartient à une seule conversation
+
+Les conversations sont totalement isolées entre elles
+
+Exemple :
+
+Utilisateur A
+ ├── Conversation A (conv_x1)
+ │    ├── user: Bonjour
+ │    ├── assistant: Bonjour !
+ │
+ ├── Conversation B (conv_x2)
+ │    ├── user: Explique-moi FastAPI
+ │    ├── assistant: ...
+
+🗂️ Modèle de données (TinyDB)
+Conversation
+
+Une conversation représente un thread de discussion.
+
+{
+  "id": "conv_xxxxx",
+  "user_id": "usr_xxxxx",
+  "title": "Nouvelle conversation",
+  "created_at": "2026-02-05T10:12:00Z",
+  "updated_at": "2026-02-05T10:15:42Z"
+}
+
+
+user_id : propriétaire de la conversation
+
+updated_at : mis à jour à chaque nouveau message (utile pour le tri côté frontend)
+
+Message (historique)
+
+Chaque message est stocké individuellement et rattaché à une conversation.
+
+{
+  "id": "msg_xxxxx",
+  "user_id": "usr_xxxxx",
+  "conversation_id": "conv_xxxxx",
+  "role": "user",
+  "content": "Bonjour",
+  "created_at": "2026-02-05T10:15:42Z"
+}
+
+
+role : user ou assistant
+
+conversation_id : lien explicite vers la conversation
+
+les messages sont stockés chronologiquement
+
+🔁 Cycle de vie d’une conversation
+1️⃣ Création explicite
+POST /conversations
+
+{
+  "title": "Discussion FastAPI"
+}
+
+
+Retourne un conversation_id que le frontend conserve.
+
+2️⃣ Création implicite (auto)
+
+Si le frontend appelle l’IA sans fournir de conversation_id :
+
+{
+  "message": "Bonjour"
+}
+
+
+➡️ le backend crée automatiquement une nouvelle conversation
+➡️ et retourne le conversation_id généré
+
+{
+  "answer": "...",
+  "conversation_id": "conv_xxxxx"
+}
+
+3️⃣ Envoi d’un message dans une conversation existante
+POST /ai/chat
+
+{
+  "conversation_id": "conv_xxxxx",
+  "message": "Peux-tu m’aider ?"
+}
+
+🧠 Contexte IA par conversation
+
+Pour chaque appel à l’IA :
+
+seuls les messages de la conversation active sont pris en compte
+
+le contexte est limité aux N derniers messages
+
+N est configurable via :
+
+CHAT_MEMORY_MESSAGES = 8
+
+
+➡️ Cela garantit :
+
+une continuité de dialogue cohérente
+
+une consommation maîtrisée du prompt
+
+aucune fuite de contexte entre conversations
+
+📜 Accès à l’historique
+GET /history/{conversation_id}
+
+
+Retourne les messages d’une conversation précise (pagination possible).
+
+🗑️ Suppression et cohérence des données
+
+Supprimer une conversation entraîne :
+
+la suppression de tous les messages associés
+
+Supprimer un utilisateur entraîne :
+
+la suppression de toutes ses conversations
+
+la suppression de tout son historique
+
+➡️ Aucun message ou conversation orpheline n’est conservé.
+
+🔐 Sécurité et isolation
+
+Un utilisateur ne peut accéder qu’à ses propres conversations
+
+Un administrateur peut :
+
+accéder aux conversations
+
+supprimer des conversations ou comptes
+
+Toutes les vérifications sont effectuées côté backend
 
 📌 Notes
 
