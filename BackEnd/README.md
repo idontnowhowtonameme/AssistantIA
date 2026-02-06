@@ -1,3 +1,13 @@
+## 🚀 En résumé
+
+AssistantIA est un backend FastAPI sécurisé qui fournit :
+- une authentification JWT
+- une gestion multi-conversationnelle par utilisateur
+- une interaction avec un LLM externe (OpenRouter)
+- une mémoire conversationnelle limitée et maîtrisée
+
+Conçu comme un backend propre, sécurisé et prêt à être consommé par un frontend SPA.
+
 # AssistantIA – Backend API
 
 Backend de l’application **AssistantIA**, une API REST sécurisée permettant :
@@ -26,22 +36,30 @@ Backend de l’application **AssistantIA**, une API REST sécurisée permettant 
 ```text
 BackEnd/
 ├── app/
-│   ├── main.py              # Point d’entrée FastAPI (factory)
-│   ├── config.py            # Variables d’environnement
-│   ├── database.py          # Initialisation TinyDB
-│   ├── security.py          # Hash + JWT
-│   ├── dependencies.py      # Dépendances FastAPI (auth JWT)
-│   ├── schemas.py           # Schémas Pydantic
-│   ├── llm.py               # Appel LLM via OpenRouter
+│   ├── __init__.py
+│   ├── config.py            # Variables d’environnement et configuration globale
+│   ├── database.py          # Initialisation TinyDB (users, conversations, messages)
+│   ├── dependencies.py      # Dépendances FastAPI (auth JWT, rôles)
+│   ├── llm.py               # Appel au LLM via OpenRouter
+│   ├── schemas.py           # Schémas Pydantic (API & données)
+│   ├── security.py          # Hash des mots de passe + JWT
+│   ├── validators.py        # Validations métier (ex: domaine email)
 │   └── routers/
-│       ├── auth.py          # Authentification
-│       ├── history.py       # Historique utilisateur
-│       └── ai.py            # Endpoint IA
+│       ├── __init__.py
+│       ├── auth.py          # Authentification (register, login, me)
+│       ├── users.py         # Gestion des comptes utilisateurs (delete, admin)
+│       ├── conversations.py # Gestion des conversations (threads)
+│       ├── history.py       # Historique des messages par conversation
+│       └── ai.py            # Endpoint IA (chat, contexte conversationnel)
+│
 ├── BDD/
-│   ├── users.json           # Base utilisateurs
-│   └── historique.json      # Historique des conversations
+│   ├── users.json           # Base utilisateurs (TinyDB)
+│   ├── conversations.json  # Conversations (threads)
+│   └── historique.json     # Messages (historique par conversation)
+│
 ├── .env                     # Variables d’environnement (non versionné)
 ├── .gitignore
+├── main.py                  # Point d’entrée Uvicorn / FastAPI
 ├── requirements.txt
 └── README.md
 ```
@@ -147,13 +165,18 @@ Réponse :
 
 ⚠️ L’appel au LLM est effectué uniquement côté backend.
 La clé API n’est jamais exposée au frontend.
-🗂️ Historique
-GET /history
 
-Récupère l’historique des messages de l’utilisateur connecté.
+🗂️ Historique (messages)
+
+GET /history/{conversation_id}
+Récupère les messages d’une conversation précise.
+
+DELETE /history/{conversation_id}
+Supprime tous les messages d’une conversation.
+
 DELETE /history
+Supprime toutes les conversations et tous les messages de l’utilisateur.
 
-Supprime l’historique de l’utilisateur connecté.
 🔐 Sécurité
 Mots de passe
 
