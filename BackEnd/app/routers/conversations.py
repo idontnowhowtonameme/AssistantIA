@@ -1,3 +1,4 @@
+# BackEnd/app/routers/conversations.py
 import uuid
 from datetime import datetime, timezone
 
@@ -38,6 +39,8 @@ def create_conversation(payload: ConversationCreateIn, user=Depends(get_current_
 def list_conversations(user=Depends(get_current_user)):
     """
     Liste les conversations de l'utilisateur (triées par updated_at DESC).
+    (L'admin, lui, verra seulement les siennes ici — c'est un choix.
+     Si tu veux "admin voit tout", on peut ajouter un query param.)
     """
     items = dbconversations.search(ConvQ.user_id == user["id"])
     items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
@@ -47,17 +50,26 @@ def list_conversations(user=Depends(get_current_user)):
 @router.delete("/{conversation_id}")
 def delete_conversation(conversation_id: str, user=Depends(get_current_user)):
     """
-    Supprime une conversation (si elle appartient à l'utilisateur),
+    Supprime une conversation :
+    - owner OU admin
     + supprime tous les messages associés.
     """
-    conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
+    is_admin = user.get("role") == "admin"
+
+    conv = dbconversations.get(ConvQ.id == conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
+    if (not is_admin) and conv.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     # 1) supprimer les messages liés
-    removed_msgs = dbhistorique.remove((HistQ.user_id == user["id"]) & (HistQ.conversation_id == conversation_id))
+    removed_msgs = dbhistorique.remove(HistQ.conversation_id == conversation_id)
 
     # 2) supprimer la conversation
-    dbconversations.remove((ConvQ.id == conversation_id) & (ConvQ.user_id == user["id"]))
+    removed_conv = dbconversations.remove(ConvQ.id == conversation_id)
 
-    return {"deleted_messages": len(removed_msgs), "deleted_conversation": True}
+    return {
+        "deleted_messages": len(removed_msgs),
+        "deleted_conversation": len(removed_conv) > 0,
+    }

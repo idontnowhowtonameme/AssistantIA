@@ -1,64 +1,25 @@
 # BackEnd/app/routers/history.py
-from datetime import datetime, timezone
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import dbhistorique, dbconversations, HistQ, ConvQ
 from app.dependencies import get_current_user
-from app.schemas import (
-    ConversationCreateIn,
-    ConversationListOut,
-    ConversationOut,
-    HistoryOut,
-    DeleteOut,
-)
+from app.schemas import HistoryOut, DeleteOut
 
 router = APIRouter()
 
 
-@router.get("/conversations", response_model=ConversationListOut)
-def list_conversations(user=Depends(get_current_user)):
-    """
-    Liste les conversations de l'utilisateur connecté.
-    """
-    user_id = user["id"]
-    items = dbconversations.search(ConvQ.user_id == user_id)
-
-    # Plus récentes en premier (updated_at)
-    items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
-
-    return {"items": items}
-
-
-@router.post("/conversations", response_model=ConversationOut, status_code=201)
-def create_conversation(payload: ConversationCreateIn, user=Depends(get_current_user)):
-    """
-    Crée une nouvelle conversation (thread).
-    Le frontend peut ensuite envoyer conversation_id à /ai/chat.
-    """
-    user_id = user["id"]
-    now = datetime.now(timezone.utc).isoformat()
-
-    conv_id = f"conv_{uuid.uuid4().hex}"
-    title = payload.title.strip() if payload.title else "Nouvelle conversation"
-
-    doc = {
-        "id": conv_id,
-        "user_id": user_id,
-        "title": title,
-        "created_at": now,
-        "updated_at": now,
-    }
-    dbconversations.insert(doc)
-    return doc
-
-
 @router.get("/{conversation_id}", response_model=HistoryOut)
-def get_conversation_history(conversation_id: str, limit: int = 50, offset: int = 0, user=Depends(get_current_user)):
+def get_conversation_history(
+    conversation_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    user=Depends(get_current_user),
+):
     """
-    Récupère l'historique d'une conversation précise.
+    Récupère l'historique (messages) d'une conversation précise.
+    - Owner uniquement (ou admin).
     """
+    # bornes simples
     if limit < 1:
         limit = 1
     if limit > 200:
@@ -67,13 +28,18 @@ def get_conversation_history(conversation_id: str, limit: int = 50, offset: int 
         offset = 0
 
     user_id = user["id"]
+    is_admin = user.get("role") == "admin"
 
-    # Vérifie que la conversation appartient au user
-    conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user_id))
+    # Vérifie que la conversation existe et que l'accès est autorisé
+    conv = dbconversations.get(ConvQ.id == conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    all_items = dbhistorique.search((HistQ.user_id == user_id) & (HistQ.conversation_id == conversation_id))
+    if (not is_admin) and conv.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Récupère les messages de cette conversation
+    all_items = dbhistorique.search(HistQ.conversation_id == conversation_id)
     all_items.sort(key=lambda x: x.get("created_at", ""))  # chrono
 
     items = all_items[offset : offset + limit]
@@ -81,33 +47,35 @@ def get_conversation_history(conversation_id: str, limit: int = 50, offset: int 
 
 
 @router.delete("/{conversation_id}", response_model=DeleteOut)
-def delete_conversation(conversation_id: str, user=Depends(get_current_user)):
+def delete_conversation_history(conversation_id: str, user=Depends(get_current_user)):
     """
-    Supprime une conversation ET tous ses messages.
+    Supprime tous les messages d'une conversation (sans supprimer la conversation elle-même).
+    - Owner uniquement (ou admin).
     """
     user_id = user["id"]
+    is_admin = user.get("role") == "admin"
 
-    conv = dbconversations.get((ConvQ.id == conversation_id) & (ConvQ.user_id == user_id))
+    conv = dbconversations.get(ConvQ.id == conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    # 1) supprimer messages liés
-    removed_msgs = dbhistorique.remove((HistQ.user_id == user_id) & (HistQ.conversation_id == conversation_id))
+    if (not is_admin) and conv.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
-    # 2) supprimer conversation
-    removed_conv = dbconversations.remove((ConvQ.id == conversation_id) & (ConvQ.user_id == user_id))
-
-    return {"deleted": len(removed_msgs) + len(removed_conv)}
+    removed = dbhistorique.remove(HistQ.conversation_id == conversation_id)
+    return {"deleted": len(removed)}
 
 
 @router.delete("", response_model=DeleteOut)
 def clear_all_history(user=Depends(get_current_user)):
     """
-    Supprime TOUT :
-    - toutes les conversations de l'utilisateur
-    - tous les messages associés
+    Supprime TOUS les messages de l'utilisateur + toutes ses conversations.
+    (utile pour "reset" complet)
     """
     user_id = user["id"]
+    # messages
     removed_msgs = dbhistorique.remove(HistQ.user_id == user_id)
+    # conversations
     removed_convs = dbconversations.remove(ConvQ.user_id == user_id)
+
     return {"deleted": len(removed_msgs) + len(removed_convs)}
