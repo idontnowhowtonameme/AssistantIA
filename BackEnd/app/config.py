@@ -1,51 +1,36 @@
+# BackEnd/app/config.py
 import os
 from dotenv import load_dotenv, find_dotenv
 
-# -------------------------------------------------------------------
-# Chargement des variables d'environnement
-# -------------------------------------------------------------------
-# find_dotenv() :
-#   - cherche automatiquement un fichier .env en remontant les dossiers
-#   - utile si tu lances uvicorn depuis un dossier différent
-#
-# load_dotenv() :
-#   - charge les variables du fichier .env dans os.environ
-#
-# 👉 Résultat : os.getenv(...) fonctionnera partout dans le projet
+# Charge automatiquement le bon .env quel que soit le dossier courant.
+# Exemple : si tu lances Uvicorn depuis BackEnd/ ou depuis la racine du repo.
 load_dotenv(find_dotenv())
 
-# -------------------------------------------------------------------
-# Configuration JWT (authentification)
-# -------------------------------------------------------------------
-
-# Clé secrète utilisée pour signer les JWT
-# ⚠️ OBLIGATOIRE : si absente, on bloque le démarrage du backend
+# ---------- JWT ----------
+# JWT_SECRET :
+# - clé de signature du token
+# - doit rester côté serveur (jamais commit)
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
+    # On crash volontairement au démarrage si absent :
+    # mieux qu'un backend qui tourne mais signe/valide mal les tokens.
     raise RuntimeError("JWT_SECRET is missing in environment (.env)")
 
-# Algorithme de signature JWT
-# HS256 = HMAC + SHA-256 (classique et suffisant pour ce projet)
+# Algo de signature (HS256 = HMAC-SHA256)
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-# Durée de validité du token JWT (en minutes)
-# Converti en int car os.getenv retourne toujours une chaîne
+# Durée de validité du token (en minutes)
+# Exemple : 15 => le client devra se reconnecter après ~15 minutes (ou gérer refresh token si tu en ajoutes plus tard)
 JWT_EXPIRES_MINUTES = int(os.getenv("JWT_EXPIRES_MINUTES", "15"))
 
-# -------------------------------------------------------------------
-# Configuration OpenRouter (IA / LLM)
-# -------------------------------------------------------------------
-
-# Clé API OpenRouter
-# ⚠️ Elle doit rester STRICTEMENT côté backend
+# ---------- OpenRouter ----------
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-
-# Modèle utilisé par OpenRouter
-# "openrouter/auto" laisse OpenRouter choisir un modèle gratuit/dispo
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto")
 
-# URL du site frontend (informationnelle pour OpenRouter)
+# Headers d'attribution (optionnels mais propres)
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost:3000")
-
-# Nom de l'application envoyé à OpenRouter
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "AssistantIA")
+
+# ---------- Chat memory ----------
+# Nombre de messages d'historique envoyés au LLM POUR LA CONVERSATION COURANTE.
+CHAT_MEMORY_MESSAGES = int(os.getenv("CHAT_MEMORY_MESSAGES", "8"))

@@ -1,4 +1,4 @@
-# app/validators.py
+# BackEnd/app/validators.py
 import dns.resolver
 
 def domain_has_mx(domain: str) -> bool:
