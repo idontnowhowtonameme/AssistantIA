@@ -357,7 +357,7 @@ L’email reste :
 un identifiant fonctionnel (login)
 mais jamais une clé primaire
 
-### 🧠 Contexte conversationnel et mémoire limitée
+🧠 Contexte conversationnel et mémoire limitée
 
 L’IA dispose d’un contexte de conversation basé sur l’historique utilisateur.
 
@@ -379,6 +379,7 @@ Les conversations sont totalement isolées entre elles
 
 Exemple :
 
+```text
 Utilisateur A
  ├── Conversation A (conv_x1)
  │    ├── user: Bonjour
@@ -387,6 +388,7 @@ Utilisateur A
  ├── Conversation B (conv_x2)
  │    ├── user: Explique-moi FastAPI
  │    ├── assistant: ...
+ ```
 
 🗂️ Modèle de données (TinyDB)
 Conversation
