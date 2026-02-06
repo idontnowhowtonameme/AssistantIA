@@ -1,21 +1,24 @@
 # AssistantIA - Frontend
+
 ## Vue d'ensemble
-Frontend React moderne pour l'application AssistantIA, offrant une interface utilisateur premium avec authentification JWT, gestion multi-conversationnelle et interactions en temps réel avec l'IA.
+Frontend React moderne pour l'application AssistantIA, offrant une interface utilisateur premium avec authentification JWT, gestion multi-conversationnelle et interactions quasi instantanées avec l’IA via API HTTP.
+
+---
 
 ### Technologies utilisées
 React 18 avec Vite pour un développement rapide
 
 React Router DOM v6 pour la navigation
 
-Axios pour les requêtes HTTP
+Fetch API (via un wrapper `api.js`) pour les requêtes HTTP
 
-Context API pour la gestion d'état globale
+CSS custom avec animations modernes (Glassmorphism)
 
-CSS Modules avec animations modernes
+JWT stocké côté client (localStorage) pour la session
 
-JWT Decode pour la gestion des tokens
+> Note : certaines sections ci-dessous décrivent aussi des évolutions prévues (tests, CI/CD, monitoring). Voir la section "Notes de cohérence" en bas.
 
-Glassmorphism pour l'interface
+---
 
 ### Architecture du projet
 
@@ -26,17 +29,16 @@ FrontEnd/
 │   └── assets/
 ├── src/
 │   ├── pages/
-│   │   ├── Auth/
-│   │   │   ├── Login.jsx
-│   │   │   └── Register.jsx
-│   │   │   └── Chat.jsx
-│   │   │   └── HistoryPanel.jsx
-│   │   │   └── HistoryPanel.css
-│   │   │   └── Profile.jsx
+│   │   ├── Login.jsx
+│   │   ├── Register.jsx
+│   │   ├── Chat.jsx
+│   │   ├── HistoryPanel.jsx
+│   │   ├── AdminPanel.jsx
+│   │   └── Profile.jsx
 │   ├── App.jsx
 │   ├── App.css
 │   ├── main.jsx
-│   └── routes.jsx
+│   └── api.js
 ├── .env
 ├── .gitignore
 ├── package.json
@@ -44,385 +46,302 @@ FrontEnd/
 └── README.md
 ```
 
-### Installation rapide
-1. Prérequis
-Node.js 18+ et npm/yarn
+Installation rapide
 
-Backend AssistantIA en cours d'exécution (http://localhost:8000)
+    Prérequis
+    Node.js 18+ et npm/yarn
+    Backend AssistantIA en cours d'exécution (http://localhost:8000
+    )
 
-2. Installation
-bash
+    Installation
+
 # Clonez le projet
 git clone https://github.com/idontnowhowtonameme/AssistantIA
 cd AssistantIA/FrontEnd
 
 # Installez les dépendances
+```bash
 npm install
+```
 # ou
 yarn install
-3. Configuration
-Créez un fichier .env à la racine du dossier FrontEnd :
 
-env
+    Configuration
+    Créez un fichier .env à la racine du dossier FrontEnd :
+
 VITE_API_URL=http://localhost:8000
 VITE_APP_NAME=AssistantIA
 VITE_APP_VERSION=1.0.0
-4. Lancement du serveur de développement
-bash
+
+    Lancement du serveur de développement
+
 # Mode développement
+```bash
 npm run dev
+```
 # ou
 yarn dev
+
 L'application sera disponible sur http://localhost:5173
 
-5. Build pour production
-bash
+    Build pour production
+
 # Build pour production
+```bash
 npm run build
+```
 # ou
 yarn build
 
 # Preview du build
+```bash
 npm run preview
+```
 # ou
 yarn preview
-### Architecture d'authentification
+
+Architecture d'authentification
 Flux JWT
+
 Connexion : L'utilisateur se connecte via /auth/login
-
-Token : Le backend retourne un token JWT valide 15 minutes
-
+Token : Le backend retourne un token JWT valide (par défaut 15 minutes côté backend)
 Stockage : Le token est stocké dans localStorage
-
-Requêtes : Axios intercepte automatiquement les requêtes pour ajouter le header Authorization
-
-Rafraîchissement : L'utilisateur doit se reconnecter après expiration du token
-
+Requêtes : api.js ajoute automatiquement le header Authorization: Bearer <token>
+Expiration : En cas de token invalide/expiré, le frontend nettoie la session et redirige vers /login
 Sécurité côté client
-Stockage sécurisé : JWT stocké avec vérification d'intégrité
 
-Auto-déconnexion : Suppression automatique du token expiré
+Stockage : JWT stocké dans localStorage
+Auto-déconnexion : suppression du token lorsque l'API retourne une 401
+Protection des routes : navigation conditionnelle basée sur la présence du token
+👤 Affichage du compte connecté (NOUVEAU)
 
-Protection des routes : Navigation conditionnelle basée sur l'authentification
+Dès l’arrivée dans le chat, le frontend appelle /auth/me afin de :
 
-CSRF Protection : Headers sécurisés sur toutes les requêtes
+    afficher en permanence l’email du compte connecté
 
-### Système de chat
+    afficher un badge administrateur si role=admin
+
+    conditionner l’accès à certaines fonctionnalités (ex: bouton Admin)
+
+Système de chat
 Caractéristiques principales
-Messages en temps réel : Interface fluide avec animations
 
-Multi-conversations : Gestion de plusieurs threads simultanés
-
-Historique intelligent : Récupération contextuelle des conversations
-
-Interface responsive : Optimisé pour mobile et desktop
-
-Markdown supporté : Messages formatés avec mise en forme
-
+Messages quasi instantanés avec feedback visuel
+Multi-conversations : gestion de plusieurs threads
+Historique : récupération des conversations et messages depuis l’API
+Interface responsive : optimisée pour mobile et desktop
 Composants du chat
-1. ChatContainer
-Gestion de l'état global de la conversation
 
-Orchestration des messages et de l'historique
+    Chat (Chat.jsx)
+    Gestion de l’état de la conversation active, envoi des messages, affichage du header.
 
-Communication avec le backend via WebSocket-like polling
+    Chargement du compte (/auth/me)
 
-2. MessageBubble
-Affichage des messages utilisateur/assistant
+    Chargement automatique de la dernière conversation au démarrage (voir section dédiée)
 
-Animations d'entrée/sortie
+    Envoi vers /ai/chat
 
-Formatage du markdown
+    HistoryPanel (HistoryPanel.jsx)
+    Liste des conversations et actions :
 
-Indicateurs de statut (envoi, reçu, lu)
+    sélectionner une conversation
 
-3. ChatInput
-Zone de texte intelligente avec auto-extension
+    supprimer une conversation
 
-Suggestions contextuelles
+    effacer tout l’historique
 
-Formatage markdown en direct
+    renommer une conversation (NOUVEAU)
 
-Envoi avec Enter/Ctrl+Enter
+    AdminPanel (AdminPanel.jsx) (NOUVEAU)
+    Fenêtre popup visible uniquement pour les admins :
 
-4. ChatHeader
-Informations de la conversation
+    liste des utilisateurs
 
-Boutons d'actions (historique, déconnexion)
+    recherche
 
-Indicateur de connexion
+    suppression ciblée
 
-### Gestion des conversations
+    Profile (Profile.jsx)
+    Suppression du compte utilisateur + logout
+
+🗂️ Gestion des conversations
 Création de conversation
+
 Manuelle : Utilisateur clique sur "Nouvelle conversation"
-
-Automatique : Créée au premier message sans conversation active
-
-Import/Export : Possibilité d'exporter une conversation en JSON
-
+Automatique : créée au premier message sans conversation active
 Organisation
-Titrage automatique : Basé sur le premier message
 
-Tri intelligent : Par date de modification
-
-Recherche : Filtrage en temps réel dans l'historique
-
-Catégories : Tags et favoris
-
+Tri : par date de mise à jour côté backend (updated_at décroissant)
+Recherche : amélioration possible côté frontend (non implémentée à ce stade)
 Historique Panel
-Interface premium : Design glassmorphism avec animations
 
-Statistiques : Nombre de messages, durée, activité
+Interface premium : design glassmorphism
+Actions rapides : sélectionner, renommer, supprimer, effacer tout
+🏷️ Renommage des conversations (NOUVEAU)
 
-Recherche avancée : Filtrage par date, contenu, tags
+Le frontend permet de renommer une conversation depuis l’historique :
 
-Actions rapides : Épingler, archiver, supprimer
+    mode édition inline sur le titre
 
-Synchronisation : Mise à jour en temps réel
+    sauvegarde via PATCH /conversations/{id} avec { "title": "..." }
 
-### Design System
+    si la conversation renommée est active, le header du chat est mis à jour immédiatement
+
+🧠 Chargement automatique de la dernière conversation
+
+Au chargement de l’écran principal (Chat.jsx) :
+
+    appel GET /conversations
+
+    si au moins une conversation existe, sélection automatique de la plus récente (index 0)
+
+    affichage immédiat du titre réel dans le header
+
+    chargement des messages via GET /history/{conversation_id}
+
+Objectif UX : éviter d’afficher “Nouvelle conversation” si l’utilisateur revient sur une conversation existante.
+🛠️ Interface Admin (NOUVEAU)
+Fonctionnement
+
+Le bouton Admin apparaît uniquement si /auth/me retourne role=admin.
+Capacités
+
+    ouverture d’une popup de gestion
+
+    listing des utilisateurs via GET /users (admin only)
+
+    suppression ciblée via DELETE /users/{id} (admin only)
+
+    protection : un admin ne peut pas se supprimer depuis cette fenêtre
+
+Design System
 Principes de design
-Glassmorphism : Effets de transparence et flou
 
-Micro-interactions : Animations subtiles pour le feedback
-
-Responsive First : Mobile-first avec breakpoints adaptatifs
-
-Accessibilité : Support WCAG 2.1 AA
-
+Glassmorphism : effets de transparence et flou
+Micro-interactions : animations subtiles pour le feedback
+Responsive First : breakpoints adaptatifs
 Palette de couleurs
-css
+
 --primary: #6366f1;      /* Bleu-violet principal */
 --secondary: #8b5cf6;    /* Violet secondaire */
 --success: #10b981;      /* Vert succès */
 --danger: #ef4444;       /* Rouge erreur */
 --warning: #f59e0b;      /* Orange avertissement */
 --glass: rgba(255, 255, 255, 0.95); /* Fond glass */
-Animations
-Entrée/sortie : Slide, fade, scale
 
-Chargement : Squelettes, spinners progressifs
+Services API
+Configuration API (Fetch wrapper)
 
-Transitions : Smooth transitions entre états
+Les requêtes HTTP sont centralisées via api.js :
 
-Feedback : Hover effects, pulsations
+    ajout du token JWT automatiquement
 
-### Services API
-Configuration Axios
-javascript
-// Intercepteurs pour JWT et erreurs
-api.interceptors.request.use()    // Ajout du token
-api.interceptors.response.use()   // Gestion des erreurs
+    normalisation des erreurs (ex: 401)
+
+    simplification des appels (apiFetch("/route", {method, body}))
+
 Endpoints consommés
-javascript
-// Authentication
+
+# Authentication
 POST   /auth/register
 POST   /auth/login
 GET    /auth/me
 
-// Chat & AI
+# Chat & AI
 POST   /ai/chat
-GET    /ai/models
 
-// Conversations
+# Conversations
 GET    /conversations
 POST   /conversations
-DELETE /conversations/:id
+PATCH  /conversations/{id}      (NOUVEAU)
+DELETE /conversations/{id}
 
-// History
-GET    /history/:conversation_id
-DELETE /history/:conversation_id
+# History
+GET    /history/{conversation_id}
 DELETE /history
 
-// Users
+# Users
 DELETE /users/me
-DELETE /users/:id   (admin only)
+GET    /users                   (admin only) (NOUVEAU)
+DELETE /users/{id}              (admin only)
+
 Gestion des erreurs
-Feedback utilisateur : Messages d'erreur contextualisés
 
-Reconnexion automatique : Tentative de reconnexion sur erreur réseau
-
-Fallback UI : États d'erreur élégants
-
-Logging : Journalisation des erreurs côté client
-
-### Responsive Design
+Feedback utilisateur : messages d'erreur contextualisés
+Fallback UI : états d'erreur (historique / admin)
+Logging : console + affichage utilisateur
+Responsive Design
 Breakpoints
-css
+
 /* Mobile First */
 sm: 640px   /* Mobile */
 md: 768px   /* Tablet */
 lg: 1024px  /* Desktop */
 xl: 1280px  /* Large Desktop */
-Optimisations mobiles
-Touch-friendly : Cibles tactiles de 44px minimum
 
-Performance : Lazy loading des images
-
-PWA Ready : Manifest et service worker
-
-Orientation : Support portrait/paysage
-
-### Sécurité frontend
+Sécurité frontend
 Bonnes pratiques implémentées
-Validation côté client : Prévention des injections
 
-Sanitization : Nettoyage des entrées utilisateur
-
-CSP Headers : Protection contre XSS
-
-HTTP Only Cookies : Configuration recommandée
-
-Rate Limiting UI : Feedback lors de trop nombreuses requêtes
-
-Protection des données
-Chiffrement localStorage : Données sensibles chiffrées
-
-Clear on Logout : Nettoyage complet au logout
-
-Session Timeout : Déconnexion automatique après inactivité
-
-### Workflows
+Clear on Logout : nettoyage complet au logout
+Auto-logout sur 401 : suppression du token quand le backend refuse la session
+Aucune clé IA côté client : la clé reste côté backend
+Workflows
 Flux d'authentification
-graph LR
-    A[Login Page] --> B{Valid Credentials?}
-    B -->|Yes| C[Get JWT Token]
-    B -->|No| A
-    C --> D[Store Token]
-    D --> E[Redirect to Chat]
-    E --> F[Protected Routes]
-    F --> G[Auto-append Authorization Header]
+
+Login -> /auth/login -> store token -> redirect Chat -> /auth/me
+
 Flux de conversation
-graph LR
-    A[User Input] --> B[Validate Input]
-    B --> C[Send to Backend]
-    C --> D[Receive AI Response]
-    D --> E[Update Local State]
-    E --> F[Update Conversation History]
-    F --> G[Update UI]
-### Gestion d'état
-Contextes React
-AuthContext
-javascript
-{
-  user: User | null,
-  token: string | null,
-  login: (email, password) => Promise,
-  logout: () => void,
-  register: (email, password) => Promise
-}
-ChatContext
-javascript
-{
-  currentConversation: Conversation | null,
-  messages: Message[],
-  conversations: Conversation[],
-  sendMessage: (content) => Promise,
-  newConversation: () => void,
-  switchConversation: (id) => void
-}
-HistoryContext
-javascript
-{
-  history: Conversation[],
-  stats: HistoryStats,
-  loadHistory: () => Promise,
-  clearHistory: () => Promise,
-  deleteConversation: (id) => Promise
-}
-### Tests
-Stratégie de test
-Unitaires : Composants individuels avec Jest + Testing Library
 
-Intégration : Flux utilisateur avec Cypress
+User input -> POST /ai/chat -> receive answer -> update messages
+If no conversation_id -> backend creates one -> frontend stores it
 
-E2E : Scénarios complets avec Playwright
+Tests (évolutions possibles)
 
-Performance : Lighthouse CI pour les métriques Core Web Vitals
+Stratégie de test (prévu)
+Unitaires : Jest + Testing Library
+E2E : Playwright ou Cypress
 
-Commandes de test
-bash
-# Tests unitaires
-npm run test:unit
+Commandes de test (à mettre en place si ajoutées au projet)
 
-# Tests E2E
-npm run test:e2e
-
-# Performance
-npm run test:performance
-
-# Tous les tests
 npm run test
-### Déploiement
-Build optimisé
-bash
-# Production build avec optimisations
-npm run build:prod
 
-# Analyse du bundle
-npm run analyze
-Variables d'environnement
-env
+Déploiement (évolutions possibles)
+
+Build optimisé
+
+npm run build
+
+Variables d'environnement (exemple)
+
 VITE_API_URL=https://api.assistantia.com
 VITE_ENV=production
-VITE_SENTRY_DSN=https://xxx@sentry.io/xxx
-VITE_GA_ID=UA-XXXXX-Y
-Intégration continue
-yaml
-# Exemple GitHub Actions
-name: Deploy
-on: [push]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-      - run: npm ci
-      - run: npm run build
-      - run: npm run test
-      - uses: peaceiris/actions-gh-pages@v3
-### Monitoring & Analytics
-Métriques collectées
-Performance : FCP, LCP, CLS, FID
 
-Usage : Nombre de messages, temps de session
+Monitoring & Analytics (évolutions possibles)
 
-Erreurs : Frontend errors avec stack traces
+Exemples d’outils possibles :
 
-Analytics : Événements utilisateur anonymisés
+    Sentry (error tracking)
 
-Outils intégrés
-Sentry : Error tracking
+    Google Analytics (analytics)
 
-Google Analytics : Analytics
+Dépannage
 
-Hotjar : Heatmaps
+    Échec d'authentification
 
-LogRocket : Session replay
+    Vérifiez que le backend est en cours d'exécution
 
-### Dépannage
-Problèmes courants
-1. Échec d'authentification
-bash
-#### Vérifiez que le backend est en cours d'exécution
-#### Vérifiez les logs de la console
-#### Videz le localStorage et réessayez
-2. Messages non envoyés
-bash
-#### Vérifiez la connexion Internet
-#### Vérifiez que le token JWT n'a pas expiré
-#### Consultez les logs du réseau dans DevTools
-3. Interface lente
-bash
-#### Videz le cache du navigateur
-#### Vérifiez les extensions de navigateur
-#### Réduisez le nombre de conversations chargées
-Debug mode
-javascript
-// Activez le mode debug dans la console
-localStorage.setItem('debug', 'true')
-// Rechargez la page pour voir les logs détaillés
+    Vérifiez les logs réseau DevTools
 
+    Videz le localStorage et réessayez
 
+    Messages non envoyés
 
+    Vérifiez que le token JWT n'a pas expiré
+
+    Vérifiez la route /ai/chat côté backend
+
+    Interface lente
+
+    Videz le cache du navigateur
+
+    Réduisez le nombre de conversations chargées (pagination future)
