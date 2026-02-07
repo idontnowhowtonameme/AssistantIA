@@ -1,4 +1,3 @@
-# BackEnd/app/routers/auth.py
 import uuid
 from datetime import datetime, timezone
 
@@ -15,13 +14,8 @@ router = APIRouter()
 
 @router.post("/register", status_code=201)
 def register(payload: RegisterIn):
-    """
-    Crée un compte utilisateur.
-    - email/password en JSON (body), plus standard en REST.
-    """
     email_norm = payload.email.strip().lower()
 
-    # Option : validation domaine (MX)
     domain = email_norm.split("@")[-1]
     if not domain_has_mx(domain):
         raise HTTPException(status_code=400, detail="Email domain is not valid (no MX record)")
@@ -43,11 +37,6 @@ def register(payload: RegisterIn):
 
 @router.post("/login", response_model=TokenOut)
 def login(payload: LoginIn):
-    """
-    Connexion :
-    - vérifie email + password
-    - renvoie un JWT
-    """
     email_norm = payload.email.strip().lower()
     user = dbuser.get(UserQ.email == email_norm)
 
@@ -60,10 +49,6 @@ def login(payload: LoginIn):
 
 @router.get("/me", response_model=MeOut)
 def me(user=Depends(get_current_user)):
-    """
-    Route protégée :
-    - retourne l'utilisateur courant depuis le token
-    """
     return {
         "id": user["id"],
         "email": user["email"],

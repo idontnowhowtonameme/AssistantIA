@@ -1,4 +1,3 @@
-# BackEnd/app/routers/history.py
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import dbhistorique, dbconversations, HistQ, ConvQ
@@ -15,11 +14,6 @@ def get_conversation_history(
     offset: int = 0,
     user=Depends(get_current_user),
 ):
-    """
-    Récupère l'historique (messages) d'une conversation précise.
-    - Owner uniquement (ou admin).
-    """
-    # bornes simples
     if limit < 1:
         limit = 1
     if limit > 200:
@@ -30,7 +24,6 @@ def get_conversation_history(
     user_id = user["id"]
     is_admin = user.get("role") == "admin"
 
-    # Vérifie que la conversation existe et que l'accès est autorisé
     conv = dbconversations.get(ConvQ.id == conversation_id)
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -38,7 +31,6 @@ def get_conversation_history(
     if (not is_admin) and conv.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # Récupère les messages de cette conversation
     all_items = dbhistorique.search(HistQ.conversation_id == conversation_id)
     all_items.sort(key=lambda x: x.get("created_at", ""))  # chrono
 
@@ -48,10 +40,6 @@ def get_conversation_history(
 
 @router.delete("/{conversation_id}", response_model=DeleteOut)
 def delete_conversation_history(conversation_id: str, user=Depends(get_current_user)):
-    """
-    Supprime tous les messages d'une conversation (sans supprimer la conversation elle-même).
-    - Owner uniquement (ou admin).
-    """
     user_id = user["id"]
     is_admin = user.get("role") == "admin"
 
@@ -68,14 +56,8 @@ def delete_conversation_history(conversation_id: str, user=Depends(get_current_u
 
 @router.delete("", response_model=DeleteOut)
 def clear_all_history(user=Depends(get_current_user)):
-    """
-    Supprime TOUS les messages de l'utilisateur + toutes ses conversations.
-    (utile pour "reset" complet)
-    """
     user_id = user["id"]
-    # messages
     removed_msgs = dbhistorique.remove(HistQ.user_id == user_id)
-    # conversations
     removed_convs = dbconversations.remove(ConvQ.user_id == user_id)
 
     return {"deleted": len(removed_msgs) + len(removed_convs)}

@@ -1,4 +1,3 @@
-# backend/app/routers/ai.py
 import uuid
 from datetime import datetime, timezone
 
@@ -21,7 +20,6 @@ async def ai_chat(payload: ChatIn, user=Depends(get_current_user)):
     is_admin = user.get("role") == "admin"
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # 1) conversation_id : si absent => créer conversation
     conversation_id = payload.conversation_id
 
     if conversation_id:
@@ -43,7 +41,6 @@ async def ai_chat(payload: ChatIn, user=Depends(get_current_user)):
             }
         )
 
-    # 2) Sauvegarder le message user
     dbhistorique.insert(
         {
             "id": f"msg_{uuid.uuid4().hex}",
@@ -55,7 +52,6 @@ async def ai_chat(payload: ChatIn, user=Depends(get_current_user)):
         }
     )
 
-    # 3) Construire le contexte : derniers N messages de CETTE conversation
     history = dbhistorique.search(HistQ.conversation_id == conversation_id)
     history.sort(key=lambda x: x.get("created_at", ""))
 
@@ -67,16 +63,13 @@ async def ai_chat(payload: ChatIn, user=Depends(get_current_user)):
         {"role": item.get("role", "user"), "content": item.get("content", "")} for item in last
     )
 
-    # 4) Appeler l'IA
     try:
         answer = await call_openrouter(messages)
     except HTTPException:
         raise
     except Exception as e:
-        # Optionnel : log minimal
         raise HTTPException(status_code=502, detail=f"LLM call failed: {type(e).__name__}")
 
-    # 5) Sauvegarder la réponse assistant
     dbhistorique.insert(
         {
             "id": f"msg_{uuid.uuid4().hex}",
@@ -88,11 +81,9 @@ async def ai_chat(payload: ChatIn, user=Depends(get_current_user)):
         }
     )
 
-    # 6) updated_at
     dbconversations.update(
         {"updated_at": datetime.now(timezone.utc).isoformat()},
         ConvQ.id == conversation_id,
     )
 
-    # 7) IMPORTANT : retour garanti conforme à ChatOut
     return {"answer": answer, "conversation_id": conversation_id}

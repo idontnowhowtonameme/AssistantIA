@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../api.js";
 
 export default function AdminPanel({ isOpen, onClose, currentUserId }) {
@@ -23,7 +23,6 @@ export default function AdminPanel({ isOpen, onClose, currentUserId }) {
 
   useEffect(() => {
     if (isOpen) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const filtered = useMemo(() => {

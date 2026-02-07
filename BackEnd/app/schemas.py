@@ -1,9 +1,7 @@
-# BackEnd/app/schemas.py
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
 
 
-# ---------- AUTH ----------
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=200)
@@ -26,7 +24,6 @@ class MeOut(BaseModel):
     role: Optional[str] = None
 
 
-# ---------- USERS (ADMIN) ----------
 class UserOut(BaseModel):
     id: str
     email: EmailStr
@@ -38,14 +35,11 @@ class UserListOut(BaseModel):
     items: List[UserOut]
 
 
-# ---------- CONVERSATIONS ----------
 class ConversationCreateIn(BaseModel):
-    # Titre optionnel (sinon on peut en générer un côté backend)
     title: Optional[str] = Field(default=None, max_length=80)
 
 
 class ConversationUpdateIn(BaseModel):
-    # Renommer une conversation
     title: str = Field(min_length=1, max_length=80)
 
 
@@ -60,11 +54,8 @@ class ConversationListOut(BaseModel):
     items: List[ConversationOut]
 
 
-# ---------- CHAT ----------
 class ChatIn(BaseModel):
     message: str = Field(min_length=1, max_length=5000)
-    # Le frontend enverra l'id de conversation sélectionnée.
-    # Si None : le backend peut créer une conversation automatiquement.
     conversation_id: Optional[str] = None
 
 
@@ -73,7 +64,6 @@ class ChatOut(BaseModel):
     conversation_id: str
 
 
-# ---------- HISTORY ----------
 class HistoryItemOut(BaseModel):
     id: str
     user_id: str

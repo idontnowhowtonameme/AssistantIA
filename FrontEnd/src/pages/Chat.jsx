@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import HistoryPanel from "./HistoryPanel.jsx";
-import AdminPanel from "./AdminPanel.jsx"; // ✅ popup admin
+import AdminPanel from "./AdminPanel.jsx";
 import { apiFetch, clearToken } from "../api.js";
 
 export default function Chat() {
@@ -14,7 +14,6 @@ export default function Chat() {
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [conversationTitle, setConversationTitle] = useState("Nouvelle conversation");
 
-  // ✅ Admin
   const [me, setMe] = useState(null);
   const [showAdmin, setShowAdmin] = useState(false);
 
@@ -75,21 +74,19 @@ export default function Chat() {
     }
   };
 
-  // ✅ NOUVEAU : au démarrage, charger la dernière conversation (si elle existe)
   const loadLastConversationOnStartup = async () => {
     try {
       const data = await apiFetch("/conversations");
       const items = data?.items || [];
 
       if (items.length === 0) {
-        // Aucune conversation => on reste en mode "Nouvelle conversation"
         setActiveConversationId(null);
         setConversationTitle("Nouvelle conversation");
         setMessages([]);
         return;
       }
 
-      const last = items[0]; // backend trié par updated_at desc
+      const last = items[0];
       if (!last?.id) return;
 
       setActiveConversationId(last.id);
@@ -97,19 +94,15 @@ export default function Chat() {
       await loadConversationMessages(last.id);
     } catch (e) {
       console.error("Impossible de charger la dernière conversation:", e);
-      // On laisse "Nouvelle conversation"
     }
   };
 
-  // ✅ CORRIGÉ : init complet au chargement (me + last conversation)
   useEffect(() => {
     const init = async () => {
       try {
         const data = await apiFetch("/auth/me");
         setMe(data);
 
-        // Si une conv n'est pas déjà sélectionnée (ex: via navigation),
-        // on charge la dernière conversation pour afficher le bon titre.
         if (!activeConversationId) {
           await loadLastConversationOnStartup();
         }
@@ -122,7 +115,6 @@ export default function Chat() {
     };
 
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sendMessage = async (e) => {
@@ -142,10 +134,8 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
 
-      // Si une nouvelle conversation est créée côté backend
       if (!activeConversationId && data.conversation_id) {
         setActiveConversationId(data.conversation_id);
-        // le titre sera renommable; à défaut on reste sur le titre par défaut
         setConversationTitle("Nouvelle conversation");
       }
     } catch (err) {
@@ -176,7 +166,6 @@ export default function Chat() {
     await loadConversationMessages(conversationId);
   };
 
-  // ✅ callback rename depuis HistoryPanel
   const handleRenameConversation = (conversationId, newTitle) => {
     if (conversationId === activeConversationId) {
       setConversationTitle(newTitle || "Conversation");
@@ -318,7 +307,7 @@ export default function Chat() {
           isOpen={showHistory}
           onClose={() => setShowHistory(false)}
           onSelectConversation={handleSelectConversation}
-          onRenameConversation={handleRenameConversation} // ✅ rename
+          onRenameConversation={handleRenameConversation}
           activeConversationId={activeConversationId}
           token={localStorage.getItem("token")}
         />
@@ -345,7 +334,6 @@ export default function Chat() {
         </div>
       )}
 
-      {/* ✅ popup admin */}
       <AdminPanel
         isOpen={showAdmin}
         onClose={() => setShowAdmin(false)}

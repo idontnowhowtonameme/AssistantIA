@@ -1,4 +1,3 @@
-# BackEnd/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(conversations_router, prefix="/conversations", tags=["conversations"])

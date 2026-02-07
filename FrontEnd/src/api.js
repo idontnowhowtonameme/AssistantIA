@@ -21,7 +21,6 @@ export async function apiFetch(path, { method = "GET", body, token, headers } = 
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // Tentative de lecture JSON (sans casser si vide)
   const text = await res.text();
   const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
 

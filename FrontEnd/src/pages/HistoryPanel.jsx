@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './HistoryPanel.css';
 
 export default function HistoryPanel({
@@ -13,7 +13,6 @@ export default function HistoryPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ renaming state
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
 
@@ -185,7 +184,6 @@ export default function HistoryPanel({
         prev.map(c => (c.id === conversationId ? { ...c, title: updated.title, updated_at: updated.updated_at } : c))
       );
 
-      // ✅ si la conv active est renommée, on met à jour le header
       onRenameConversation?.(conversationId, updated.title);
 
       setEditingId(null);
